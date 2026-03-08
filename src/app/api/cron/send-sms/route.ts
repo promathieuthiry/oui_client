@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/server'
+import { sendSMSToBookings } from '@/lib/services/sms-sender'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: NextRequest) {
+  // Verify CRON_SECRET
+  const authHeader = request.headers.get('authorization')
+  const cronSecret = process.env.CRON_SECRET
+
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+
+  const supabase = await createServiceClient()
+
+  // Get tomorrow's date
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+
+  // Query all bookings for tomorrow with sms_sent_at IS NULL
+  const { data: bookings, error: bookError } = await supabase
+    .from('bookings')
+    .select('*, restaurants!inner(id, name, sms_template)')
+    .eq('booking_date', tomorrowStr)
+    .is('sms_sent_at', null)
+    .eq('status', 'pending')
+
+  if (bookError) {
+    console.error('Cron send-sms error:', bookError)
+    return NextResponse.json(
+      { error: 'Erreur lors de la récupération des réservations' },
+      { status: 500 }
+    )
+  }
+
+  if (!bookings || bookings.length === 0) {
+    return NextResponse.json({
+      restaurants_processed: 0,
+      total_sent: 0,
+      total_failed: 0,
+      total_skipped: 0,
+    })
+  }
+
+  // Group by restaurant
+  const byRestaurant = new Map<
+    string,
+    { restaurant: { id: string; name: string; sms_template: string }; bookings: typeof bookings }
+  >()
+
+  for (const booking of bookings) {
+    const rest = booking.restaurants as unknown as { id: string; name: string; sms_template: string }
+    if (!byRestaurant.has(rest.id)) {
+      byRestaurant.set(rest.id, { restaurant: rest, bookings: [] })
+    }
+    byRestaurant.get(rest.id)!.bookings.push(booking)
+  }
+
+  let totalSent = 0
+  let totalFailed = 0
+  let totalSkipped = 0
+
+  for (const [, { restaurant, bookings: restBookings }] of byRestaurant) {
+    const result = await sendSMSToBookings(restBookings, restaurant, {
+      createSmsSend: async (data) => {
+        await supabase.from('sms_sends').insert(data)
+      },
+      updateBooking: async (id, data) => {
+        await supabase.from('bookings').update(data).eq('id', id)
+      },
+    })
+
+    totalSent += result.sent
+    totalFailed += result.failed
+    totalSkipped += result.skipped
+  }
+
+  return NextResponse.json({
+    restaurants_processed: byRestaurant.size,
+    total_sent: totalSent,
+    total_failed: totalFailed,
+    total_skipped: totalSkipped,
+  })
+}

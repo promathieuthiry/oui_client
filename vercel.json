@@ -1,0 +1,6 @@
+{
+  "crons": [
+    { "path": "/api/cron/send-sms", "schedule": "0 16 * * *" },
+    { "path": "/api/cron/send-recap", "schedule": "0 8 * * *" }
+  ]
+}

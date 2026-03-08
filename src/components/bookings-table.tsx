@@ -1,0 +1,119 @@
+'use client'
+
+import { StatusBadge } from '@/components/status-badge'
+import { maskPhone } from '@/lib/utils/phone'
+
+interface Booking {
+  id: string
+  guest_name: string
+  phone: string
+  booking_date: string
+  booking_time: string
+  party_size: number
+  status: string
+}
+
+interface BookingsTableProps {
+  bookings: Booking[]
+  selectedIds: Set<string>
+  onSelectionChange: (ids: Set<string>) => void
+}
+
+export function BookingsTable({ bookings, selectedIds, onSelectionChange }: BookingsTableProps) {
+  if (bookings.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        Aucune réservation pour cette date.
+      </div>
+    )
+  }
+
+  const allSelected = bookings.length > 0 && bookings.every((b) => selectedIds.has(b.id))
+
+  function toggleAll() {
+    if (allSelected) {
+      onSelectionChange(new Set())
+    } else {
+      onSelectionChange(new Set(bookings.map((b) => b.id)))
+    }
+  }
+
+  function toggleOne(id: string) {
+    const next = new Set(selectedIds)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    onSelectionChange(next)
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                className="rounded border-gray-300"
+              />
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Nom
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Téléphone
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Date
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Heure
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Couverts
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Statut
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {bookings.map((booking) => (
+            <tr key={booking.id}>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(booking.id)}
+                  onChange={() => toggleOne(booking.id)}
+                  className="rounded border-gray-300"
+                />
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {booking.guest_name}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                {maskPhone(booking.phone)}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {booking.booking_date}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {booking.booking_time}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {booking.party_size}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <StatusBadge status={booking.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
