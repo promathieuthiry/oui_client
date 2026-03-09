@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { parseReply } from '@/lib/services/reply-parser'
+import { sendSMS } from '@/lib/services/octopush'
 
 export async function POST(request: NextRequest) {
   // Webhook endpoint — no auth session, uses service role
@@ -62,6 +63,19 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', booking.id)
+  }
+
+  // Send auto-reply SMS for confirmed/cancelled (fire-and-forget)
+  const autoReplyMessages: Record<string, string> = {
+    oui: 'Merci, votre réservation est bien confirmée. À bientôt !',
+    non: "Merci d'avoir prévenu. Votre réservation a bien été annulée.",
+  }
+
+  const autoReply = autoReplyMessages[interpretation]
+  if (autoReply) {
+    sendSMS(phone, autoReply).catch((err) => {
+      console.error(`Auto-reply SMS failed for ${phone.slice(0, 6)}***:`, err)
+    })
   }
 
   // Must return 200 quickly (Octopush requirement)

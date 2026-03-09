@@ -16,6 +16,8 @@ interface Restaurant {
   id: string
   name: string
   sms_template: string
+  sms_template_jj: string
+  sms_template_relance: string
 }
 
 interface SendDetail {
@@ -49,7 +51,7 @@ interface DBCallbacks {
 
 const STOP_MENTION = 'STOP au 30101'
 
-function formatTemplate(
+export function formatTemplate(
   template: string,
   booking: Booking,
   restaurant: Restaurant
