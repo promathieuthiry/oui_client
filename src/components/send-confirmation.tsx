@@ -25,6 +25,7 @@ export function SendConfirmation({
   onCancel,
 }: SendConfirmationProps) {
   const [sending, setSending] = useState(false)
+  const [templateType, setTemplateType] = useState<'' | 'jj' | 'relance'>('')
   const [result, setResult] = useState<{
     sent: number
     failed: number
@@ -43,6 +44,8 @@ export function SendConfirmation({
         body: JSON.stringify({
           restaurant_id: restaurantId,
           booking_date: bookingDate,
+          booking_ids: bookings.map((b) => b.id),
+          ...(templateType && { template_type: templateType }),
         }),
       })
 
@@ -103,6 +106,27 @@ export function SendConfirmation({
           </li>
         ))}
       </ul>
+
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium text-gray-700">Modèle de SMS</legend>
+        {([
+          { value: '', label: 'Rappel J-1' },
+          { value: 'jj', label: 'Rappel Jour J' },
+          { value: 'relance', label: 'Relance' },
+        ] as const).map((option) => (
+          <label key={option.value} className="flex items-center gap-2 text-sm text-gray-600">
+            <input
+              type="radio"
+              name="template_type"
+              value={option.value}
+              checked={templateType === option.value}
+              onChange={() => setTemplateType(option.value)}
+              className="accent-blue-600"
+            />
+            {option.label}
+          </label>
+        ))}
+      </fieldset>
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">

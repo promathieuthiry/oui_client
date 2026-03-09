@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { sendSMSToBookings } from '@/lib/services/sms-sender'
+
+const bodySchema = z.object({
+  restaurant_id: z.string().uuid(),
+  booking_date: z.string(),
+  template_type: z.enum(['jj', 'relance']).optional(),
+  booking_ids: z.array(z.string().uuid()).optional(),
+})
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -12,20 +20,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 
-  const body = await request.json()
-  const { restaurant_id, booking_date } = body
-
-  if (!restaurant_id || !booking_date) {
+  const parsed = bodySchema.safeParse(await request.json())
+  if (!parsed.success) {
     return NextResponse.json(
-      { error: 'restaurant_id et booking_date sont requis' },
+      { error: 'Paramètres invalides' },
       { status: 400 }
     )
   }
 
+  const { restaurant_id, booking_date, template_type, booking_ids } = parsed.data
+
   // Get restaurant
   const { data: restaurant, error: restError } = await supabase
     .from('restaurants')
-    .select('id, name, sms_template')
+    .select('id, name, sms_template, sms_template_jj, sms_template_relance')
     .eq('id', restaurant_id)
     .single()
 
@@ -36,14 +44,41 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Select the correct template based on type
+  const templateKey =
+    template_type === 'jj'
+      ? 'sms_template_jj'
+      : template_type === 'relance'
+        ? 'sms_template_relance'
+        : 'sms_template'
+
+  const selectedTemplate = restaurant[templateKey]
+  if (!selectedTemplate) {
+    return NextResponse.json(
+      { error: 'Le modèle SMS sélectionné est vide. Configurez-le dans les paramètres du restaurant.' },
+      { status: 400 }
+    )
+  }
+
+  const selectedRestaurant = {
+    ...restaurant,
+    sms_template: selectedTemplate,
+  }
+
   // Get pending bookings for this date
-  const { data: bookings, error: bookError } = await supabase
+  let query = supabase
     .from('bookings')
     .select('*')
     .eq('restaurant_id', restaurant_id)
     .eq('booking_date', booking_date)
     .is('sms_sent_at', null)
     .in('status', ['pending'])
+
+  if (booking_ids && booking_ids.length > 0) {
+    query = query.in('id', booking_ids)
+  }
+
+  const { data: bookings, error: bookError } = await query
 
   if (bookError) {
     return NextResponse.json(
@@ -61,7 +96,7 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  const result = await sendSMSToBookings(bookings, restaurant, {
+  const result = await sendSMSToBookings(bookings, selectedRestaurant, {
     createSmsSend: async (data) => {
       await supabase.from('sms_sends').insert(data)
     },

@@ -104,6 +104,8 @@ export default function BookingsPage() {
     (b) => b.status === 'pending' && !b.sms_sent_at
   )
 
+  const bookingsToSend = pendingBookings.filter((b) => selectedIds.has(b.id))
+
   const sentCount = bookings.filter((b) => b.sms_sent_at).length
   const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length
   const cancelledCount = bookings.filter((b) => b.status === 'cancelled').length
@@ -135,12 +137,12 @@ export default function BookingsPage() {
                 : `Supprimer (${selectedIds.size})`}
             </button>
           )}
-          {pendingBookings.length > 0 && (
+          {bookingsToSend.length > 0 && (
             <button
               onClick={() => setShowSendDialog(true)}
               className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 text-sm font-medium"
             >
-              Envoyer les SMS ({pendingBookings.length})
+              Envoyer les SMS ({bookingsToSend.length})
             </button>
           )}
         </div>
@@ -188,7 +190,7 @@ export default function BookingsPage() {
 
       {showSendDialog && restaurantId && (
         <SendConfirmation
-          bookings={pendingBookings}
+          bookings={bookingsToSend}
           restaurantId={restaurantId}
           bookingDate={selectedDate}
           onSendComplete={() => {
