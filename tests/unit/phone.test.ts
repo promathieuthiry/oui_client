@@ -42,8 +42,16 @@ describe('toE164', () => {
     expect(toE164('')).toBeNull()
   })
 
-  it('should return null for non-French number', () => {
-    expect(toE164('+44712345678')).toBeNull()
+  it('should convert international number without + prefix', () => {
+    expect(toE164('4915150634427')).toBe('+4915150634427')
+  })
+
+  it('should pass through international E.164 with +', () => {
+    expect(toE164('+4915150634427')).toBe('+4915150634427')
+  })
+
+  it('should pass through UK E.164 number', () => {
+    expect(toE164('+44712345678')).toBe('+44712345678')
   })
 })
 

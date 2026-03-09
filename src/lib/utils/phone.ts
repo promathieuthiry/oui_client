@@ -27,6 +27,16 @@ export function toE164(phone: string): string | null {
     return '+33' + cleaned.slice(1)
   }
 
+  // Already full E.164 with + (non-French international)
+  if (/^\+[1-9]\d{9,14}$/.test(cleaned)) {
+    return cleaned
+  }
+
+  // International number without + prefix (e.g. 4915150634427)
+  if (/^[1-9]\d{9,14}$/.test(cleaned)) {
+    return '+' + cleaned
+  }
+
   return null
 }
 

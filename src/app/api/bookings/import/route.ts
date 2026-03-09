@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { importCSV } from '@/lib/services/csv-import'
+import { isEditionFormat, convertEditionCSV } from '@/lib/services/edition-csv-converter'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -33,6 +34,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Auto-detect Edition PMS format and convert
+  const isEdition = isEditionFormat(csvText)
+  let processedCsv = csvText
+  if (isEdition) {
+    const conversion = convertEditionCSV(csvText)
+    processedCsv = conversion.csv
+  }
+
   // Use provided mapping, or load saved mapping from restaurant
   let mapping = null
   if (mappingStr) {
@@ -58,7 +67,10 @@ export async function POST(request: NextRequest) {
       .eq('id', restaurantId)
   }
 
-  const result = await importCSV(csvText, restaurantId, {
+  // Edition converter already maps columns to standard names, skip mapping
+  const effectiveMapping = isEdition ? null : mapping
+
+  const result = await importCSV(processedCsv, restaurantId, {
     upsertBooking: async (data) => {
       const { data: existing } = await supabase
         .from('bookings')
@@ -84,7 +96,7 @@ export async function POST(request: NextRequest) {
       await supabase.from('bookings').insert(data)
       return { isNew: true }
     },
-  }, mapping)
+  }, effectiveMapping)
 
   return NextResponse.json(result)
 }

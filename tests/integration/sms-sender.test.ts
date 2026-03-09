@@ -28,6 +28,10 @@ describe('sendSMSToBookings', () => {
     name: 'Le Bon Restaurant',
     sms_template:
       'Bonjour, votre réservation au {restaurant} le {date} à {heure} pour {couverts} personne(s) est bien notée. Merci de confirmer en répondant OUI ou NON à ce SMS.',
+    sms_template_jj:
+      '{restaurant}\n\nPetit rappel pour vous dire que toute l\'équipe du restaurant vous attend aujourd\'hui à {heure} pour {couverts} personnes.\n\nPour préparer au mieux votre accueil, merci de répondre OK ou ANNULER.\n\nBonne journée',
+    sms_template_relance:
+      '{restaurant}\n\nNous n\'avons pas encore recu votre confirmation pour ce soir {heure} ({couverts} pers.).\nMerci au nom de l\'équipe en salle de répondre OK ou ANNULER rapidement.',
   }
 
   it('should send SMS to all bookings and return results', async () => {

@@ -48,6 +48,54 @@ export function BookingsTable({ bookings, selectedIds, onSelectionChange }: Book
     onSelectionChange(next)
   }
 
+  const SOIR_CUTOFF = '15:00'
+  const midi = bookings.filter((b) => b.booking_time < SOIR_CUTOFF)
+  const soir = bookings.filter((b) => b.booking_time >= SOIR_CUTOFF)
+
+  function renderRows(rows: Booking[]) {
+    return rows.map((booking) => (
+      <tr key={booking.id}>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={selectedIds.has(booking.id)}
+            onChange={() => toggleOne(booking.id)}
+            className="rounded border-gray-300"
+          />
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {booking.guest_name}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+          {maskPhone(booking.phone)}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          {booking.booking_date}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          {booking.booking_time}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          {booking.party_size}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap">
+          <StatusBadge status={booking.status} />
+        </td>
+      </tr>
+    ))
+  }
+
+  function renderSectionHeader(label: string, count: number) {
+    return (
+      <tr>
+        <td colSpan={7} className="bg-gray-100 px-6 py-2">
+          <span className="text-sm font-semibold text-gray-700">{label}</span>
+          <span className="ml-2 text-sm text-gray-400">{count} réservation(s)</span>
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
@@ -82,36 +130,18 @@ export function BookingsTable({ bookings, selectedIds, onSelectionChange }: Book
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {bookings.map((booking) => (
-            <tr key={booking.id}>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.has(booking.id)}
-                  onChange={() => toggleOne(booking.id)}
-                  className="rounded border-gray-300"
-                />
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {booking.guest_name}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                {maskPhone(booking.phone)}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {booking.booking_date}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {booking.booking_time}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {booking.party_size}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <StatusBadge status={booking.status} />
-              </td>
-            </tr>
-          ))}
+          {midi.length > 0 && (
+            <>
+              {renderSectionHeader('Midi', midi.length)}
+              {renderRows(midi)}
+            </>
+          )}
+          {soir.length > 0 && (
+            <>
+              {renderSectionHeader('Soir', soir.length)}
+              {renderRows(soir)}
+            </>
+          )}
         </tbody>
       </table>
     </div>

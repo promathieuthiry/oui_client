@@ -41,6 +41,8 @@ describe('Cron Idempotency', () => {
       id: 'rest-1',
       name: 'Le Bon Restaurant',
       sms_template: 'Test {restaurant} {date} {heure} {couverts}',
+      sms_template_jj: 'Test JJ {restaurant} {heure} {couverts}',
+      sms_template_relance: 'Test Relance {restaurant} {heure} {couverts}',
     }
 
     const result = await sendSMSToBookings(bookings, restaurant, {
@@ -72,6 +74,8 @@ describe('Cron Idempotency', () => {
       id: 'rest-1',
       name: 'Le Bon Restaurant',
       sms_template: 'Test {restaurant} {date} {heure} {couverts}',
+      sms_template_jj: 'Test JJ {restaurant} {heure} {couverts}',
+      sms_template_relance: 'Test Relance {restaurant} {heure} {couverts}',
     }
 
     const result = await sendSMSToBookings(bookings, restaurant, {

@@ -53,8 +53,8 @@ const STOP_MENTION = 'STOP au 30101'
 
 export function formatTemplate(
   template: string,
-  booking: Booking,
-  restaurant: Restaurant
+  booking: Pick<Booking, 'booking_date' | 'booking_time' | 'party_size'>,
+  restaurant: Pick<Restaurant, 'name'>
 ): string {
   let message = template
     .replace(/\{restaurant\}/g, restaurant.name)

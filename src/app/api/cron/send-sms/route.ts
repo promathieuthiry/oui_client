@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   // Query all bookings for tomorrow with sms_sent_at IS NULL
   const { data: bookings, error: bookError } = await supabase
     .from('bookings')
-    .select('*, restaurants!inner(id, name, sms_template)')
+    .select('*, restaurants!inner(id, name, sms_template, sms_template_jj, sms_template_relance)')
     .eq('booking_date', tomorrowStr)
     .is('sms_sent_at', null)
     .eq('status', 'pending')
@@ -48,11 +48,11 @@ export async function GET(request: NextRequest) {
   // Group by restaurant
   const byRestaurant = new Map<
     string,
-    { restaurant: { id: string; name: string; sms_template: string }; bookings: typeof bookings }
+    { restaurant: { id: string; name: string; sms_template: string; sms_template_jj: string; sms_template_relance: string }; bookings: typeof bookings }
   >()
 
   for (const booking of bookings) {
-    const rest = booking.restaurants as unknown as { id: string; name: string; sms_template: string }
+    const rest = booking.restaurants as unknown as { id: string; name: string; sms_template: string; sms_template_jj: string; sms_template_relance: string }
     if (!byRestaurant.has(rest.id)) {
       byRestaurant.set(rest.id, { restaurant: rest, bookings: [] })
     }

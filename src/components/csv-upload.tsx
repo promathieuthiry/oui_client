@@ -76,6 +76,12 @@ export function CSVUpload({
     const text = await file.text()
     setFileContent(text)
 
+    // Edition PMS format — backend converter handles everything
+    if (text.includes('Heure,Table,Cvts,Nom,')) {
+      await performImport(text, null)
+      return
+    }
+
     // Parse first line to detect headers
     const firstLine = text.split('\n')[0]
     const headers = firstLine.split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
@@ -211,8 +217,8 @@ export function CSVUpload({
           </p>
 
           <div className="space-y-2">
-            {detectedHeaders.map((header) => (
-              <div key={header} className="flex items-center space-x-4">
+            {detectedHeaders.map((header, index) => (
+              <div key={index} className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700 w-40 truncate font-mono">
                   {header}
                 </span>
