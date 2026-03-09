@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { BookingsTable } from '@/components/bookings-table'
 import { SendConfirmation } from '@/components/send-confirmation'
 import { RecapPreview } from '@/components/recap-preview'
+import { AddBookingForm } from '@/components/add-booking-form'
 
 export default function BookingsPage() {
   const searchParams = useSearchParams()
@@ -27,6 +28,7 @@ export default function BookingsPage() {
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [restaurantName, setRestaurantName] = useState<string>('')
   const [showSendDialog, setShowSendDialog] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -120,6 +122,12 @@ export default function BookingsPage() {
           )}
         </div>
         <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 text-sm font-medium"
+          >
+            Ajouter une réservation
+          </button>
           <a
             href="/bookings/import"
             className="bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 text-sm font-medium"
@@ -198,6 +206,18 @@ export default function BookingsPage() {
             loadBookings()
           }}
           onCancel={() => setShowSendDialog(false)}
+        />
+      )}
+
+      {showAddForm && restaurantId && (
+        <AddBookingForm
+          restaurantId={restaurantId}
+          bookingDate={selectedDate}
+          onSuccess={() => {
+            setShowAddForm(false)
+            loadBookings()
+          }}
+          onCancel={() => setShowAddForm(false)}
         />
       )}
 
