@@ -5,22 +5,16 @@ import { maskPhone } from '@/lib/utils/phone'
 
 export const dynamic = 'force-dynamic'
 
-const STOP_MENTION = 'STOP au 30101'
-
 function formatTemplate(
   template: string,
   booking: { booking_time: string; party_size: number; booking_date: string },
   restaurantName: string
 ): string {
-  let message = template
+  const message = template
     .replace(/\{restaurant\}/g, restaurantName)
     .replace(/\{date\}/g, booking.booking_date)
     .replace(/\{heure\}/g, booking.booking_time)
     .replace(/\{couverts\}/g, String(booking.party_size))
-
-  if (!message.includes('STOP')) {
-    message += `\n${STOP_MENTION}`
-  }
 
   return message
 }

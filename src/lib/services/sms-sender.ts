@@ -49,24 +49,16 @@ interface DBCallbacks {
   ) => Promise<void>
 }
 
-const STOP_MENTION = 'STOP au 30101'
-
 export function formatTemplate(
   template: string,
   booking: Pick<Booking, 'booking_date' | 'booking_time' | 'party_size'>,
   restaurant: Pick<Restaurant, 'name'>
 ): string {
-  let message = template
+  return template
     .replace(/\{restaurant\}/g, restaurant.name)
     .replace(/\{date\}/g, booking.booking_date)
     .replace(/\{heure\}/g, booking.booking_time)
     .replace(/\{couverts\}/g, String(booking.party_size))
-
-  if (!message.includes('STOP')) {
-    message += `\n${STOP_MENTION}`
-  }
-
-  return message
 }
 
 export async function sendSMSToBookings(
