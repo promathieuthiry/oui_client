@@ -94,22 +94,24 @@ export default function BookingsPage() {
       .eq('restaurant_id', restaurantId)
       .eq('booking_date', selectedDate)
       .order('booking_time', { ascending: true })
-      .then(({ data, error: queryError }) => {
-        if (cancelled) return
-        if (queryError) {
-          console.error('Failed to load bookings:', queryError.message)
-          setError('Impossible de charger les réservations.')
-        } else {
-          setBookings(data || [])
+      .then(
+        ({ data, error: queryError }) => {
+          if (cancelled) return
+          if (queryError) {
+            console.error('Failed to load bookings:', queryError.message)
+            setError('Impossible de charger les réservations.')
+          } else {
+            setBookings(data || [])
+          }
+          setLoading(false)
+        },
+        (err) => {
+          if (cancelled) return
+          console.error('Network error loading bookings:', err)
+          setError('Erreur réseau. Vérifiez votre connexion.')
+          setLoading(false)
         }
-        setLoading(false)
-      })
-      .catch((err) => {
-        if (cancelled) return
-        console.error('Network error loading bookings:', err)
-        setError('Erreur réseau. Vérifiez votre connexion.')
-        setLoading(false)
-      })
+      )
 
     return () => { cancelled = true }
   }, [restaurantId, selectedDate, refreshKey, supabase])
