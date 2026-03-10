@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { RestaurantSwitcher } from '@/components/restaurant-switcher'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,9 @@ export default function RootLayout({
                 <span className="text-xl font-bold text-gray-900">
                   OuiClient
                 </span>
+                <div className="border-l border-gray-200 pl-8">
+                  <RestaurantSwitcher />
+                </div>
                 <a
                   href="/bookings"
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
