@@ -57,7 +57,7 @@ export function formatTemplate(
   return template
     .replace(/\{restaurant\}/g, restaurant.name)
     .replace(/\{date\}/g, booking.booking_date)
-    .replace(/\{heure\}/g, booking.booking_time)
+    .replace(/\{heure\}/g, booking.booking_time.slice(0, 5))
     .replace(/\{couverts\}/g, String(booking.party_size))
 }
 

@@ -1,7 +1,8 @@
 'use client'
 
 import { StatusBadge } from '@/components/status-badge'
-import { maskPhone } from '@/lib/utils/phone'
+import { formatPhone } from '@/lib/utils/phone'
+import { SOIR_CUTOFF } from '@/lib/constants'
 
 interface Booking {
   id: string
@@ -48,7 +49,6 @@ export function BookingsTable({ bookings, selectedIds, onSelectionChange }: Book
     onSelectionChange(next)
   }
 
-  const SOIR_CUTOFF = '15:00'
   const midi = bookings.filter((b) => b.booking_time < SOIR_CUTOFF)
   const soir = bookings.filter((b) => b.booking_time >= SOIR_CUTOFF)
 
@@ -67,13 +67,13 @@ export function BookingsTable({ bookings, selectedIds, onSelectionChange }: Book
           {booking.guest_name}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-          {maskPhone(booking.phone)}
+          {formatPhone(booking.phone)}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {booking.booking_date}
+          {booking.booking_date.split('-').reverse().join('/')}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          {booking.booking_time}
+          {booking.booking_time.slice(0, 5)}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
           {booking.party_size}

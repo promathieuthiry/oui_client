@@ -37,12 +37,12 @@ export async function POST(request: NextRequest) {
       .update({ delivery_status: 'DELIVERED', status: 'delivered' })
       .eq('id', smsSend.id)
 
-    // Update booking status to sms_sent
+    // Update booking status to sms_delivered (confirmed delivery by carrier)
     await supabase
       .from('bookings')
-      .update({ status: 'sms_sent', updated_at: new Date().toISOString() })
+      .update({ status: 'sms_delivered', updated_at: new Date().toISOString() })
       .eq('id', smsSend.booking_id)
-      .eq('status', 'pending')
+      .in('status', ['pending', 'sms_sent'])
   } else if (
     dlrStatus === 'NOT_DELIVERED' &&
     smsSend.attempts < 3

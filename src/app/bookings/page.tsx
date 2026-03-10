@@ -43,6 +43,7 @@ export default function BookingsPage() {
   )
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [restaurantName, setRestaurantName] = useState<string>('')
+  const [restaurantEmail, setRestaurantEmail] = useState<string>('')
   const [showSendDialog, setShowSendDialog] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -70,12 +71,13 @@ export default function BookingsPage() {
 
       const { data: restaurant } = await supabase
         .from('restaurants')
-        .select('name')
+        .select('name, email')
         .eq('id', activeId)
         .single()
 
       if (restaurant) {
         setRestaurantName(restaurant.name)
+        setRestaurantEmail(restaurant.email ?? '')
       }
     }
 
@@ -274,6 +276,7 @@ export default function BookingsPage() {
               bookings={bookings}
               restaurantId={restaurantId}
               serviceDate={selectedDate}
+              restaurantEmail={restaurantEmail}
             />
           )}
         </>
