@@ -6,19 +6,55 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createServiceClient()
 
+  // Parse webhook payload - Octopush sends form-encoded data in production
+  const contentType = request.headers.get('content-type') || ''
+  console.log('[Webhook] Content-Type:', contentType)
+
   let body: Record<string, unknown>
+  let rawPayload: string | null = null
+
   try {
-    body = await request.json()
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      console.log('[Webhook] Parsing as form-encoded data')
+      const formData = await request.formData()
+      body = Object.fromEntries(formData.entries())
+      rawPayload = Array.from(formData.entries())
+        .map(([key, value]) => `${key}=${value}`)
+        .join('&')
+    } else if (contentType.includes('application/json')) {
+      console.log('[Webhook] Parsing as JSON')
+      body = await request.json()
+      rawPayload = JSON.stringify(body)
+    } else {
+      // Auto-detect format: try JSON first, then form-encoded
+      console.log('[Webhook] No Content-Type specified, attempting auto-detect')
+      const text = await request.text()
+      rawPayload = text
+
+      try {
+        body = JSON.parse(text)
+        console.log('[Webhook] Auto-detected as JSON')
+      } catch {
+        // Parse as form-encoded
+        const params = new URLSearchParams(text)
+        body = Object.fromEntries(params.entries())
+        console.log('[Webhook] Auto-detected as form-encoded')
+      }
+    }
+
+    console.log('[Webhook] Raw payload:', rawPayload)
     console.log('[Webhook] Parsed body:', JSON.stringify(body))
   } catch (error) {
-    console.error('[Webhook] Failed to parse JSON:', error)
+    console.error('[Webhook] Failed to parse payload:', error)
     return new NextResponse(null, { status: 200 })
   }
 
-  const messageId = body.message_id as string | undefined
-  const dlrStatus = body.status as string | undefined
+  // Handle field name variations used by Octopush
+  const messageId = (body.message_id || body.ticket || body.sms_ticket) as string | undefined
+  const dlrStatus = (body.status || body.delivery_status) as string | undefined
+  const channel = body.channel as string | undefined
 
-  console.log('[Webhook] messageId:', messageId, 'status:', dlrStatus)
+  console.log('[Webhook] Extracted fields - messageId:', messageId, 'status:', dlrStatus, 'channel:', channel)
 
   if (!messageId || !dlrStatus) {
     console.log('[Webhook] Missing required fields - messageId or status')

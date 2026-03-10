@@ -40,13 +40,28 @@ Receives inbound SMS replies from Octopush.
 
 Receives delivery receipts (DLR) from Octopush.
 
-**Octopush sends**:
+**Important**: Octopush sends delivery webhooks as `application/x-www-form-urlencoded` data in production, NOT JSON.
+
+**Octopush sends** (form-encoded):
+```
+message_id=sms_5fa275dbf21dc&number=%2B33600000000&status=DELIVERED&delivery_date=2026-03-08+18%3A01%3A23&channel=sms
+```
+
+**Field names** (Octopush may vary these):
+- `message_id`, `ticket`, or `sms_ticket` → SMS identifier (matches `sms_sends.octopush_ticket`)
+- `status` or `delivery_status` → Delivery status code
+- `channel` → SMS channel (typically "sms")
+- `number` → Recipient phone number
+- `delivery_date` → Timestamp of delivery
+
+**Example as JSON** (for reference/testing):
 ```json
 {
   "message_id": "sms_5fa275dbf21dc",
   "number": "+33600000000",
   "status": "DELIVERED",
-  "delivery_date": "2026-03-08 18:01:23"
+  "delivery_date": "2026-03-08 18:01:23",
+  "channel": "sms"
 }
 ```
 
