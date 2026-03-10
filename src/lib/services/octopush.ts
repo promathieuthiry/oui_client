@@ -24,8 +24,8 @@ export async function sendSMS(
       recipients: [{ phone_number: phone }],
       text,
       sender,
-      type: "sms_low_cost",
-      purpose: "transactional",
+      type: "sms_premium",
+      purpose: "alert",
       with_replies: true,
     };
 
