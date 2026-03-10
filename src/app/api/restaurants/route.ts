@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
+import { ACTIVE_RESTAURANT_COOKIE } from '@/lib/utils/active-restaurant'
 
 export async function GET() {
   const supabase = await createClient()
@@ -11,15 +13,10 @@ export async function GET() {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 
-  const serviceClient = await createServiceClient()
+  const cookieStore = await cookies()
+  const activeRestaurantId = cookieStore.get(ACTIVE_RESTAURANT_COOKIE)?.value ?? null
 
-  const { data: profile } = await serviceClient
-    .from('profiles')
-    .select('restaurant_id')
-    .eq('id', user.id)
-    .single()
-
-  const { data: restaurants, error } = await serviceClient
+  const { data: restaurants, error } = await supabase
     .from('restaurants')
     .select('*')
     .order('created_at')
@@ -33,7 +30,7 @@ export async function GET() {
 
   return NextResponse.json({
     restaurants: restaurants ?? [],
-    activeRestaurantId: profile?.restaurant_id ?? null,
+    activeRestaurantId,
   })
 }
 
@@ -57,9 +54,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const serviceClient = await createServiceClient()
-
-  const { data: restaurant, error } = await serviceClient
+  const { data: restaurant, error } = await supabase
     .from('restaurants')
     .insert({
       name,

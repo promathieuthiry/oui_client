@@ -100,13 +100,14 @@ export async function sendSMSToBookings(
     })
 
     if (smsResult.success) {
-      await db.updateBooking(booking.id, { sms_sent_at: now })
+      await db.updateBooking(booking.id, { sms_sent_at: now, status: 'sms_sent' })
       result.sent++
       result.details.push({ booking_id: booking.id, status: 'sent' })
       console.log(
         `SMS sent to ${maskPhone(booking.phone)} for booking ${booking.id}\n→ ${message}`
       )
     } else {
+      await db.updateBooking(booking.id, { status: 'send_failed' })
       result.failed++
       result.details.push({
         booking_id: booking.id,

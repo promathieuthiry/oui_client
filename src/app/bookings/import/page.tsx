@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getActiveRestaurantId } from '@/lib/utils/active-restaurant'
 import { CSVUpload } from '@/components/csv-upload'
 
 export default function ImportPage() {
@@ -12,31 +13,21 @@ export default function ImportPage() {
 
   useEffect(() => {
     async function loadRestaurant() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const activeId = getActiveRestaurantId()
+      if (!activeId) return
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('restaurant_id')
-        .eq('id', user.id)
+      setRestaurantId(activeId)
+
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('name, csv_mapping')
+        .eq('id', activeId)
         .single()
 
-      if (profile) {
-        setRestaurantId(profile.restaurant_id)
-
-        const { data: restaurant } = await supabase
-          .from('restaurants')
-          .select('name, csv_mapping')
-          .eq('id', profile.restaurant_id)
-          .single()
-
-        if (restaurant) {
-          setRestaurantName(restaurant.name)
-          if (restaurant.csv_mapping) {
-            setSavedMapping(restaurant.csv_mapping as Record<string, string>)
-          }
+      if (restaurant) {
+        setRestaurantName(restaurant.name)
+        if (restaurant.csv_mapping) {
+          setSavedMapping(restaurant.csv_mapping as Record<string, string>)
         }
       }
     }
@@ -79,7 +70,14 @@ export default function ImportPage() {
             savedMapping={savedMapping}
           />
         ) : (
-          <p className="text-gray-500">Chargement du restaurant...</p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p className="text-amber-800">
+              Aucun restaurant sélectionné.{' '}
+              <a href="/restaurants" className="underline font-medium">
+                Choisir un restaurant
+              </a>
+            </p>
+          </div>
         )}
       </div>
 

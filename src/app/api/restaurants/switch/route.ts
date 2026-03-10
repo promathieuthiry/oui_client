@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+import { ACTIVE_RESTAURANT_COOKIE } from '@/lib/utils/active-restaurant'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -21,10 +22,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const serviceClient = await createServiceClient()
-
   // Verify restaurant exists
-  const { data: restaurant, error: restError } = await serviceClient
+  const { data: restaurant, error: restError } = await supabase
     .from('restaurants')
     .select('id')
     .eq('id', restaurant_id)
@@ -37,18 +36,14 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Update profile
-  const { error } = await serviceClient
-    .from('profiles')
-    .update({ restaurant_id })
-    .eq('id', user.id)
+  const response = NextResponse.json({ success: true })
+  response.cookies.set(ACTIVE_RESTAURANT_COOKIE, restaurant_id, {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax',
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+  })
 
-  if (error) {
-    return NextResponse.json(
-      { error: 'Erreur lors du changement de restaurant' },
-      { status: 500 }
-    )
-  }
-
-  return NextResponse.json({ success: true })
+  return response
 }

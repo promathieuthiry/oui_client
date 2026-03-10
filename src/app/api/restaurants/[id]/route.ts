@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function PATCH(
   request: NextRequest,
@@ -27,9 +27,7 @@ export async function PATCH(
   if (sms_send_time !== undefined) updates.sms_send_time = sms_send_time
   if (recap_send_time !== undefined) updates.recap_send_time = recap_send_time
 
-  const serviceClient = await createServiceClient()
-
-  const { data: restaurant, error } = await serviceClient
+  const { data: restaurant, error } = await supabase
     .from('restaurants')
     .update(updates)
     .eq('id', id)

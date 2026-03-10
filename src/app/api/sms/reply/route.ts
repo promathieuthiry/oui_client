@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { parseReply } from '@/lib/services/reply-parser'
 import { sendSMS } from '@/lib/services/octopush'
+import { toE164 } from '@/lib/utils/phone'
 
 export async function POST(request: NextRequest) {
   // Webhook endpoint — no auth session, uses service role
@@ -23,6 +24,9 @@ export async function POST(request: NextRequest) {
     return new NextResponse(null, { status: 200 })
   }
 
+  // Normalize phone to E.164 to match DB format
+  const normalizedPhone = toE164(phone) || phone
+
   const interpretation = parseReply(text)
 
   const statusMap: Record<string, string> = {
@@ -37,7 +41,7 @@ export async function POST(request: NextRequest) {
   const { data: bookings } = await supabase
     .from('bookings')
     .select('id')
-    .eq('phone', phone)
+    .eq('phone', normalizedPhone)
     .in('status', ['pending', 'sms_sent'])
     .gte('booking_date', today)
 

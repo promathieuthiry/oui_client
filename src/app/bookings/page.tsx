@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getActiveRestaurantId } from '@/lib/utils/active-restaurant'
 import { BookingsTable } from '@/components/bookings-table'
 import { SendConfirmation } from '@/components/send-confirmation'
 import { RecapPreview } from '@/components/recap-preview'
@@ -51,29 +52,22 @@ export default function BookingsPage() {
 
   useEffect(() => {
     async function loadRestaurant() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
+      const activeId = getActiveRestaurantId()
+      if (!activeId) {
+        setLoading(false)
+        return
+      }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('restaurant_id')
-        .eq('id', user.id)
+      setRestaurantId(activeId)
+
+      const { data: restaurant } = await supabase
+        .from('restaurants')
+        .select('name')
+        .eq('id', activeId)
         .single()
 
-      if (profile) {
-        setRestaurantId(profile.restaurant_id)
-
-        const { data: restaurant } = await supabase
-          .from('restaurants')
-          .select('name')
-          .eq('id', profile.restaurant_id)
-          .single()
-
-        if (restaurant) {
-          setRestaurantName(restaurant.name)
-        }
+      if (restaurant) {
+        setRestaurantName(restaurant.name)
       }
     }
 
@@ -219,6 +213,17 @@ export default function BookingsPage() {
           }}
           onCancel={() => setShowAddForm(false)}
         />
+      )}
+
+      {!loading && !restaurantId && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <p className="text-amber-800">
+            Aucun restaurant sélectionné.{' '}
+            <a href="/restaurants" className="underline font-medium">
+              Choisir un restaurant
+            </a>
+          </p>
+        </div>
       )}
 
       {loading ? (
