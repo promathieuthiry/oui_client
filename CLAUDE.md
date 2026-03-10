@@ -26,4 +26,9 @@ TypeScript (strict mode) / Node.js 20+: Follow standard conventions
 - 001-sms-booking-mvp: Added TypeScript (strict mode) / Node.js 20+ + Next.js 15 (App Router), Supabase (`@supabase/ssr`, `@supabase/supabase-js`), Resend, Papa Parse, Zod
 
 <!-- MANUAL ADDITIONS START -->
+
+## Documentation
+
+- Octopush SMS API: https://dev.octopush.com/en/sms-gateway-api-documentation/
+
 <!-- MANUAL ADDITIONS END -->
