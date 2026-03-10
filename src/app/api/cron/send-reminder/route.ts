@@ -13,7 +13,7 @@ function formatTemplate(
   const message = template
     .replace(/\{restaurant\}/g, restaurantName)
     .replace(/\{date\}/g, booking.booking_date)
-    .replace(/\{heure\}/g, booking.booking_time)
+    .replace(/\{heure\}/g, booking.booking_time.slice(0, 5))
     .replace(/\{couverts\}/g, String(booking.party_size))
 
   return message

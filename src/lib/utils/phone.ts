@@ -41,6 +41,17 @@ export function toE164(phone: string): string | null {
 }
 
 /**
+ * Format a phone number for readable display: +33 6 12 34 56 78
+ */
+export function formatPhone(phone: string): string {
+  if (phone.startsWith('+33') && phone.length === 12) {
+    const d = phone.slice(3) // 9 digits after +33
+    return `+33 ${d[0]} ${d[1]}${d[2]} ${d[3]}${d[4]} ${d[5]}${d[6]} ${d[7]}${d[8]}`
+  }
+  return phone
+}
+
+/**
  * Mask a phone number for display: +33 6 XX XX XX 34
  * Shows only the last 2 digits.
  */

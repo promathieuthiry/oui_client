@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendRecapEmail } from '@/lib/services/recap-email'
+import { SOIR_CUTOFF } from '@/lib/constants'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -13,7 +14,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { restaurant_id, service_date } = body
+  const { restaurant_id, service_date, service } = body as {
+    restaurant_id: string
+    service_date: string
+    service?: 'midi' | 'soir'
+  }
 
   if (!restaurant_id || !service_date) {
     return NextResponse.json(
@@ -51,15 +56,26 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  let filteredBookings = bookings || []
+  let serviceLabel: string | undefined
+  if (service === 'midi') {
+    filteredBookings = filteredBookings.filter((b) => b.booking_time < SOIR_CUTOFF)
+    serviceLabel = 'Midi'
+  } else if (service === 'soir') {
+    filteredBookings = filteredBookings.filter((b) => b.booking_time >= SOIR_CUTOFF)
+    serviceLabel = 'Soir'
+  }
+
   const result = await sendRecapEmail(
     restaurant,
     service_date,
-    bookings || [],
+    filteredBookings,
     {
       createRecap: async (data) => {
         await supabase.from('recaps').insert(data)
       },
-    }
+    },
+    serviceLabel
   )
 
   return NextResponse.json(result)

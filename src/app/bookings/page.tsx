@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useReducer } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getActiveRestaurantId } from '@/lib/utils/active-restaurant'
@@ -9,46 +9,55 @@ import { SendConfirmation } from '@/components/send-confirmation'
 import { RecapPreview } from '@/components/recap-preview'
 import { AddBookingForm } from '@/components/add-booking-form'
 
+interface Booking {
+  id: string
+  guest_name: string
+  phone: string
+  booking_date: string
+  booking_time: string
+  party_size: number
+  status: string
+  sms_sent_at: string | null
+}
+
+interface StatCardProps {
+  label: string
+  value: number
+  color: string
+}
+
+function StatCard({ label, value, color }: StatCardProps) {
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <p className="text-sm text-gray-500">{label}</p>
+      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+    </div>
+  )
+}
+
 export default function BookingsPage() {
   const searchParams = useSearchParams()
-  const [bookings, setBookings] = useState<
-    {
-      id: string
-      guest_name: string
-      phone: string
-      booking_date: string
-      booking_time: string
-      party_size: number
-      status: string
-      sms_sent_at: string | null
-    }[]
-  >([])
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [selectedDate, setSelectedDate] = useState(
     searchParams.get('date') || new Date().toISOString().split('T')[0]
   )
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [restaurantName, setRestaurantName] = useState<string>('')
+  const [restaurantEmail, setRestaurantEmail] = useState<string>('')
   const [showSendDialog, setShowSendDialog] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshKey, forceRefresh] = useReducer((c: number) => c + 1, 0)
   const supabase = createClient()
 
-  const loadBookings = useCallback(async () => {
-    if (!restaurantId) return
+  function refreshBookings() {
+    setError(null)
     setLoading(true)
-
-    const { data } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('booking_date', selectedDate)
-      .order('booking_time', { ascending: true })
-
-    setBookings(data || [])
-    setLoading(false)
-  }, [restaurantId, selectedDate, supabase])
+    forceRefresh()
+  }
 
   useEffect(() => {
     async function loadRestaurant() {
@@ -62,12 +71,13 @@ export default function BookingsPage() {
 
       const { data: restaurant } = await supabase
         .from('restaurants')
-        .select('name')
+        .select('name, email')
         .eq('id', activeId)
         .single()
 
       if (restaurant) {
         setRestaurantName(restaurant.name)
+        setRestaurantEmail(restaurant.email ?? '')
       }
     }
 
@@ -75,10 +85,36 @@ export default function BookingsPage() {
   }, [supabase])
 
   useEffect(() => {
-    if (restaurantId) {
-      loadBookings()
-    }
-  }, [restaurantId, selectedDate, loadBookings])
+    if (!restaurantId) return
+    let cancelled = false
+
+    supabase
+      .from('bookings')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('booking_date', selectedDate)
+      .order('booking_time', { ascending: true })
+      .then(
+        ({ data, error: queryError }) => {
+          if (cancelled) return
+          if (queryError) {
+            console.error('Failed to load bookings:', queryError.message)
+            setError('Impossible de charger les réservations.')
+          } else {
+            setBookings(data || [])
+          }
+          setLoading(false)
+        },
+        (err) => {
+          if (cancelled) return
+          console.error('Network error loading bookings:', err)
+          setError('Erreur réseau. Vérifiez votre connexion.')
+          setLoading(false)
+        }
+      )
+
+    return () => { cancelled = true }
+  }, [restaurantId, selectedDate, refreshKey, supabase])
 
   async function handleDelete() {
     if (selectedIds.size === 0) return
@@ -91,7 +127,7 @@ export default function BookingsPage() {
 
     if (!error) {
       setSelectedIds(new Set())
-      await loadBookings()
+      refreshBookings()
     }
     setDeleting(false)
   }
@@ -102,9 +138,12 @@ export default function BookingsPage() {
 
   const bookingsToSend = pendingBookings.filter((b) => selectedIds.has(b.id))
 
-  const sentCount = bookings.filter((b) => b.sms_sent_at).length
+  const sentCount = bookings.filter((b) => b.status === 'sms_sent').length
+  const deliveredCount = bookings.filter((b) => b.status === 'sms_delivered').length
   const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length
   const cancelledCount = bookings.filter((b) => b.status === 'cancelled').length
+  const toVerifyCount = bookings.filter((b) => b.status === 'to_verify').length
+  const sendFailedCount = bookings.filter((b) => b.status === 'send_failed').length
 
   return (
     <div className="space-y-6">
@@ -170,23 +209,15 @@ export default function BookingsPage() {
       </div>
 
       {bookings.length > 0 && (
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Total</p>
-            <p className="text-2xl font-bold text-gray-900">{bookings.length}</p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-sm text-gray-500">SMS envoyés</p>
-            <p className="text-2xl font-bold text-blue-600">{sentCount}</p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Confirmées</p>
-            <p className="text-2xl font-bold text-green-600">{confirmedCount}</p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <p className="text-sm text-gray-500">Annulées</p>
-            <p className="text-2xl font-bold text-red-600">{cancelledCount}</p>
-          </div>
+        <div className="grid grid-cols-4 lg:grid-cols-8 gap-4">
+          <StatCard label="Total" value={bookings.length} color="text-gray-900" />
+          <StatCard label="À envoyer" value={pendingBookings.length} color="text-gray-600" />
+          <StatCard label="SMS envoyés" value={sentCount} color="text-blue-600" />
+          <StatCard label="SMS reçus" value={deliveredCount} color="text-indigo-600" />
+          <StatCard label="Confirmées" value={confirmedCount} color="text-green-600" />
+          <StatCard label="Annulées" value={cancelledCount} color="text-red-600" />
+          <StatCard label="À vérifier" value={toVerifyCount} color="text-yellow-600" />
+          <StatCard label="Échec" value={sendFailedCount} color="text-red-800" />
         </div>
       )}
 
@@ -197,7 +228,7 @@ export default function BookingsPage() {
           bookingDate={selectedDate}
           onSendComplete={() => {
             setShowSendDialog(false)
-            loadBookings()
+            refreshBookings()
           }}
           onCancel={() => setShowSendDialog(false)}
         />
@@ -209,10 +240,16 @@ export default function BookingsPage() {
           bookingDate={selectedDate}
           onSuccess={() => {
             setShowAddForm(false)
-            loadBookings()
+            refreshBookings()
           }}
           onCancel={() => setShowAddForm(false)}
         />
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-700">{error}</p>
+        </div>
       )}
 
       {!loading && !restaurantId && (
@@ -241,6 +278,7 @@ export default function BookingsPage() {
               bookings={bookings}
               restaurantId={restaurantId}
               serviceDate={selectedDate}
+              restaurantEmail={restaurantEmail}
             />
           )}
         </>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useReducer } from 'react'
 
 interface Restaurant {
   id: string
@@ -45,19 +45,38 @@ export default function RestaurantsPage() {
   const [switching, setSwitching] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  const loadRestaurants = useCallback(async () => {
-    const res = await fetch('/api/restaurants')
-    if (res.ok) {
-      const data = await res.json()
-      setRestaurants(data.restaurants)
-      setActiveRestaurantId(data.activeRestaurantId)
-    }
-    setLoading(false)
-  }, [])
+  const [refreshKey, forceRefresh] = useReducer((c: number) => c + 1, 0)
+
+  function refreshRestaurants() {
+    setLoading(true)
+    forceRefresh()
+  }
 
   useEffect(() => {
-    loadRestaurants()
-  }, [loadRestaurants])
+    let cancelled = false
+
+    fetch('/api/restaurants')
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
+      .then((data) => {
+        if (!cancelled) {
+          setRestaurants(data.restaurants)
+          setActiveRestaurantId(data.activeRestaurantId)
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to load restaurants:', err)
+          setMessage({ type: 'error', text: 'Impossible de charger les restaurants.' })
+          setLoading(false)
+        }
+      })
+
+    return () => { cancelled = true }
+  }, [refreshKey])
 
   function openCreateForm() {
     const first = restaurants[0]
@@ -114,7 +133,7 @@ export default function RestaurantsPage() {
       if (res.ok) {
         setMessage({ type: 'success', text: 'Restaurant créé avec succès.' })
         closeForm()
-        await loadRestaurants()
+        refreshRestaurants()
       } else {
         setMessage({ type: 'error', text: 'Erreur lors de la création.' })
       }
@@ -127,7 +146,7 @@ export default function RestaurantsPage() {
       if (res.ok) {
         setMessage({ type: 'success', text: 'Restaurant mis à jour avec succès.' })
         closeForm()
-        await loadRestaurants()
+        refreshRestaurants()
       } else {
         setMessage({ type: 'error', text: 'Erreur lors de la mise à jour.' })
       }

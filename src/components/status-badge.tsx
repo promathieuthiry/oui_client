@@ -1,11 +1,15 @@
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   pending: {
-    label: 'En attente',
+    label: 'À envoyer',
     className: 'bg-gray-100 text-gray-700',
   },
   sms_sent: {
     label: 'SMS envoyé',
     className: 'bg-blue-100 text-blue-700',
+  },
+  sms_delivered: {
+    label: 'SMS reçu',
+    className: 'bg-indigo-100 text-indigo-700',
   },
   confirmed: {
     label: 'Confirmée',

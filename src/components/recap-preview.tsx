@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { StatusBadge } from '@/components/status-badge'
+import { SOIR_CUTOFF } from '@/lib/constants'
 
 interface Booking {
   id: string
@@ -15,13 +16,24 @@ interface RecapPreviewProps {
   bookings: Booking[]
   restaurantId: string
   serviceDate: string
+  restaurantEmail: string
 }
 
-export function RecapPreview({
+function RecapSection({
   bookings,
   restaurantId,
   serviceDate,
-}: RecapPreviewProps) {
+  restaurantEmail,
+  service,
+  label,
+}: {
+  bookings: Booking[]
+  restaurantId: string
+  serviceDate: string
+  restaurantEmail: string
+  service: 'midi' | 'soir'
+  label: string
+}) {
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{
     email_status: string
@@ -40,6 +52,7 @@ export function RecapPreview({
         body: JSON.stringify({
           restaurant_id: restaurantId,
           service_date: serviceDate,
+          service,
         }),
       })
 
@@ -59,10 +72,6 @@ export function RecapPreview({
     }
   }
 
-  if (bookings.length === 0) {
-    return null
-  }
-
   const confirmed = bookings.filter((b) => b.status === 'confirmed').length
 
   return (
@@ -70,19 +79,26 @@ export function RecapPreview({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-medium text-gray-900">
-            Récapitulatif du {serviceDate}
+            Récapitulatif {label} du {serviceDate}
           </h3>
           <p className="text-sm text-gray-500">
             {confirmed}/{bookings.length} confirmée(s)
           </p>
         </div>
-        <button
-          onClick={handleSend}
-          disabled={sending}
-          className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-        >
-          {sending ? 'Envoi...' : 'Envoyer le récapitulatif'}
-        </button>
+        <div className="relative group">
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+          >
+            {sending ? 'Envoi...' : 'Envoyer le récapitulatif'}
+          </button>
+          {restaurantEmail && (
+            <div className="absolute right-0 top-full mt-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+              Envoi à {restaurantEmail}
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -130,7 +146,7 @@ export function RecapPreview({
                   {booking.guest_name}
                 </td>
                 <td className="px-4 py-2 text-sm text-gray-500">
-                  {booking.booking_time}
+                  {booking.booking_time.slice(0, 5)}
                 </td>
                 <td className="px-4 py-2 text-sm text-gray-500">
                   {booking.party_size}
@@ -143,6 +159,46 @@ export function RecapPreview({
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+export function RecapPreview({
+  bookings,
+  restaurantId,
+  serviceDate,
+  restaurantEmail,
+}: RecapPreviewProps) {
+  const midi = bookings.filter((b) => b.booking_time < SOIR_CUTOFF)
+  const soir = bookings.filter((b) => b.booking_time >= SOIR_CUTOFF)
+
+  if (midi.length === 0 && soir.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-gray-900">Récapitulatifs email</h2>
+      {midi.length > 0 && (
+        <RecapSection
+          bookings={midi}
+          restaurantId={restaurantId}
+          serviceDate={serviceDate}
+          restaurantEmail={restaurantEmail}
+          service="midi"
+          label="Midi"
+        />
+      )}
+      {soir.length > 0 && (
+        <RecapSection
+          bookings={soir}
+          restaurantId={restaurantId}
+          serviceDate={serviceDate}
+          restaurantEmail={restaurantEmail}
+          service="soir"
+          label="Soir"
+        />
+      )}
     </div>
   )
 }

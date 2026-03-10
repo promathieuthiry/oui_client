@@ -37,12 +37,12 @@ export async function POST(request: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // Find all matching bookings (phone match, pending/sms_sent, future date)
+  // Find all matching bookings (phone match, pending/sms_sent/sms_delivered, future date)
   const { data: bookings } = await supabase
     .from('bookings')
     .select('id')
     .eq('phone', normalizedPhone)
-    .in('status', ['pending', 'sms_sent'])
+    .in('status', ['pending', 'sms_sent', 'sms_delivered'])
     .gte('booking_date', today)
 
   if (!bookings || bookings.length === 0) {

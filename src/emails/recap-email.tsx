@@ -28,12 +28,14 @@ interface RecapEmailProps {
   restaurantName: string
   serviceDate: string
   bookings: RecapBooking[]
+  serviceLabel?: string
 }
 
 export function RecapEmail({
   restaurantName,
   serviceDate,
   bookings,
+  serviceLabel,
 }: RecapEmailProps) {
   const confirmed = bookings.filter((b) => b.status === 'confirmed').length
   const total = bookings.length
@@ -44,10 +46,10 @@ export function RecapEmail({
       <Body style={{ fontFamily: 'Arial, sans-serif', backgroundColor: '#f5f5f5', padding: '20px' }}>
         <Container style={{ backgroundColor: '#ffffff', borderRadius: '8px', padding: '32px', maxWidth: '600px' }}>
           <Heading style={{ fontSize: '24px', color: '#1a1a1a', marginBottom: '8px' }}>
-            Récapitulatif — {restaurantName}
+            Récapitulatif{serviceLabel ? ` ${serviceLabel}` : ''} — {restaurantName}
           </Heading>
           <Text style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
-            Service du {serviceDate} — {confirmed}/{total} confirmée(s)
+            Service{serviceLabel ? ` ${serviceLabel}` : ''} du {serviceDate} — {confirmed}/{total} confirmée(s)
           </Text>
 
           <Section>
@@ -69,16 +71,16 @@ export function RecapEmail({
                 </tr>
               </thead>
               <tbody>
-                {bookings.map((booking, index) => (
+                {bookings.map((booking) => (
                   <tr
-                    key={index}
+                    key={`${booking.booking_time}-${booking.guest_name}`}
                     style={{ borderBottom: '1px solid #f0f0f0' }}
                   >
                     <td style={{ padding: '8px', fontSize: '14px' }}>
                       {booking.guest_name}
                     </td>
                     <td style={{ padding: '8px', fontSize: '14px' }}>
-                      {booking.booking_time}
+                      {booking.booking_time.slice(0, 5)}
                     </td>
                     <td style={{ padding: '8px', fontSize: '14px' }}>
                       {booking.party_size}

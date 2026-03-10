@@ -38,7 +38,8 @@ export async function sendRecapEmail(
   restaurant: Restaurant,
   serviceDate: string,
   bookings: RecapBooking[],
-  db: DBCallbacks
+  db: DBCallbacks,
+  serviceLabel?: string
 ): Promise<RecapResult> {
   const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -46,11 +47,14 @@ export async function sendRecapEmail(
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'OuiClient <noreply@ouiclient.com>',
       to: restaurant.email,
-      subject: `Récapitulatif réservations — ${restaurant.name} — ${serviceDate}`,
+      subject: serviceLabel
+        ? `Récapitulatif ${serviceLabel} réservations — ${restaurant.name} — ${serviceDate}`
+        : `Récapitulatif réservations — ${restaurant.name} — ${serviceDate}`,
       react: RecapEmail({
         restaurantName: restaurant.name,
         serviceDate,
         bookings,
+        serviceLabel,
       }),
     })
 
