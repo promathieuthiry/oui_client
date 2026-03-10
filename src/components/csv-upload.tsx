@@ -217,8 +217,8 @@ export function CSVUpload({
           </p>
 
           <div className="space-y-2">
-            {detectedHeaders.map((header, index) => (
-              <div key={index} className="flex items-center space-x-4">
+            {detectedHeaders.map((header) => (
+              <div key={header} className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700 w-40 truncate font-mono">
                   {header}
                 </span>
@@ -312,8 +312,8 @@ export function CSVUpload({
                 {result.errors.length} erreur(s) :
               </p>
               <ul className="list-disc list-inside space-y-1">
-                {result.errors.map((err, i) => (
-                  <li key={i}>
+                {result.errors.map((err) => (
+                  <li key={`${err.row}-${err.field}`}>
                     Ligne {err.row} ({err.field}) : {err.message}
                   </li>
                 ))}

@@ -69,9 +69,9 @@ export function RecapEmail({
                 </tr>
               </thead>
               <tbody>
-                {bookings.map((booking, index) => (
+                {bookings.map((booking) => (
                   <tr
-                    key={index}
+                    key={`${booking.booking_time}-${booking.guest_name}`}
                     style={{ borderBottom: '1px solid #f0f0f0' }}
                   >
                     <td style={{ padding: '8px', fontSize: '14px' }}>
