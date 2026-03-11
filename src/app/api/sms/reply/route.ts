@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
     console.log('[SMS Reply] JSON parsed successfully, keys:', Object.keys(body))
+    console.log('[SMS Reply] Full body structure:', JSON.stringify(body, null, 2))
   } catch (err) {
     console.error('[SMS Reply] JSON parse FAILED:', err)
     return new NextResponse(null, { status: 200 })
