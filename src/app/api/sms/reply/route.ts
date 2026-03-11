@@ -6,23 +6,21 @@ import { toE164 } from '@/lib/utils/phone'
 
 export async function POST(request: NextRequest) {
   // Webhook endpoint — no auth session, uses service role
-  console.log('[SMS Reply] ===== WEBHOOK HIT ===== Method:', request.method, 'URL:', request.url)
-
   const supabase = await createServiceClient()
 
   let body: Record<string, unknown>
   try {
     body = await request.json()
-    console.log('[SMS Reply] JSON parsed successfully, keys:', Object.keys(body))
-    console.log('[SMS Reply] Full body structure:', JSON.stringify(body, null, 2))
   } catch (err) {
-    console.error('[SMS Reply] JSON parse FAILED:', err)
+    console.error('[SMS Reply] JSON parse failed:', err)
     return new NextResponse(null, { status: 200 })
   }
 
-  const phone = body.number as string | undefined
+  // Extract fields from nested metadata structure
+  const metadata = body.metadata as Record<string, unknown> | undefined
+  const phone = metadata?.number as string | undefined
   const text = body.text as string | undefined
-  const messageId = body.message_id as string | undefined
+  const messageId = metadata?.message_id as string | undefined
   const receptionDate = body.reception_date as string | undefined
 
   console.log('[SMS Reply] Webhook received:', {
