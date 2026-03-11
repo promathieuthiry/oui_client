@@ -6,12 +6,16 @@ import { toE164 } from '@/lib/utils/phone'
 
 export async function POST(request: NextRequest) {
   // Webhook endpoint — no auth session, uses service role
+  console.log('[SMS Reply] ===== WEBHOOK HIT ===== Method:', request.method, 'URL:', request.url)
+
   const supabase = await createServiceClient()
 
   let body: Record<string, unknown>
   try {
     body = await request.json()
-  } catch {
+    console.log('[SMS Reply] JSON parsed successfully, keys:', Object.keys(body))
+  } catch (err) {
+    console.error('[SMS Reply] JSON parse FAILED:', err)
     return new NextResponse(null, { status: 200 })
   }
 
