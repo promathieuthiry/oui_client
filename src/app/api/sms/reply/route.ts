@@ -78,17 +78,18 @@ export async function POST(request: NextRequest) {
     error: debugError?.message,
   })
 
-  // Find all matching bookings (phone match, pending/sms_sent/sms_delivered, future date)
+  // Find all matching bookings (phone match, pending/sms_sent/sms_delivered/confirmed, future date)
+  // Allow confirmed bookings to be cancelled via SMS reply
   const { data: bookings } = await supabase
     .from('bookings')
     .select('id')
     .eq('phone', normalizedPhone)
-    .in('status', ['pending', 'sms_sent', 'sms_delivered'])
+    .in('status', ['pending', 'sms_sent', 'sms_delivered', 'confirmed'])
     .gte('booking_date', today)
 
   console.log('[SMS Reply] Bookings lookup:', {
     phone: normalizedPhone?.slice(0, 6) + '***',
-    statusFilter: ['pending', 'sms_sent', 'sms_delivered'],
+    statusFilter: ['pending', 'sms_sent', 'sms_delivered', 'confirmed'],
     dateFilter: `>= ${today}`,
     found: bookings?.length || 0,
   })
