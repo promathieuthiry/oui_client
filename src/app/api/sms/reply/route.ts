@@ -20,6 +20,13 @@ export async function POST(request: NextRequest) {
   const messageId = body.message_id as string | undefined
   const receptionDate = body.reception_date as string | undefined
 
+  console.log('[SMS Reply] Webhook received:', {
+    phone: phone?.slice(0, 6) + '***',
+    textLength: text?.length,
+    messageId,
+    timestamp: receptionDate || 'now',
+  })
+
   if (!phone || !text) {
     return new NextResponse(null, { status: 200 })
   }
@@ -27,7 +34,24 @@ export async function POST(request: NextRequest) {
   // Normalize phone to E.164 to match DB format
   const normalizedPhone = toE164(phone) || phone
 
+  console.log('[SMS Reply] Phone normalized:', {
+    original: phone?.slice(0, 6) + '***',
+    normalized: normalizedPhone?.slice(0, 6) + '***',
+    format: normalizedPhone.startsWith('+') ? 'E.164' : 'other',
+  })
+
   const interpretation = parseReply(text)
+
+  console.log('[SMS Reply] Text parsed:', {
+    interpretation,
+    rawText: text.substring(0, 20) + (text.length > 20 ? '...' : ''),
+    targetStatus:
+      interpretation === 'oui'
+        ? 'confirmed'
+        : interpretation === 'non'
+          ? 'cancelled'
+          : 'to_verify',
+  })
 
   const statusMap: Record<string, string> = {
     oui: 'confirmed',
@@ -37,6 +61,20 @@ export async function POST(request: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]
 
+  // Debug: Check if booking exists with ANY status
+  const { data: allBookings, error: debugError } = await supabase
+    .from('bookings')
+    .select('id, status, booking_date, phone')
+    .eq('phone', normalizedPhone)
+    .gte('booking_date', today)
+
+  console.log('[SMS Reply] Debug - All bookings for phone:', {
+    phone: normalizedPhone?.slice(0, 6) + '***',
+    found: allBookings?.length || 0,
+    statuses: allBookings?.map((b) => b.status) || [],
+    error: debugError?.message,
+  })
+
   // Find all matching bookings (phone match, pending/sms_sent/sms_delivered, future date)
   const { data: bookings } = await supabase
     .from('bookings')
@@ -45,6 +83,13 @@ export async function POST(request: NextRequest) {
     .in('status', ['pending', 'sms_sent', 'sms_delivered'])
     .gte('booking_date', today)
 
+  console.log('[SMS Reply] Bookings lookup:', {
+    phone: normalizedPhone?.slice(0, 6) + '***',
+    statusFilter: ['pending', 'sms_sent', 'sms_delivered'],
+    dateFilter: `>= ${today}`,
+    found: bookings?.length || 0,
+  })
+
   if (!bookings || bookings.length === 0) {
     console.log(`No matching bookings for phone ${phone.slice(0, 6)}***`)
     return new NextResponse(null, { status: 200 })
@@ -52,21 +97,39 @@ export async function POST(request: NextRequest) {
 
   // Create reply records and update statuses for all matching bookings
   for (const booking of bookings) {
-    await supabase.from('sms_replies').insert({
-      booking_id: booking.id,
-      raw_text: text,
-      interpretation,
-      octopush_message_id: messageId || null,
-      received_at: receptionDate || new Date().toISOString(),
-    })
-
-    await supabase
-      .from('bookings')
-      .update({
-        status: statusMap[interpretation],
-        updated_at: new Date().toISOString(),
+    try {
+      const { error: insertError } = await supabase.from('sms_replies').insert({
+        booking_id: booking.id,
+        raw_text: text,
+        interpretation,
+        octopush_message_id: messageId || null,
+        received_at: receptionDate || new Date().toISOString(),
       })
-      .eq('id', booking.id)
+
+      if (insertError) throw insertError
+
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          status: statusMap[interpretation],
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', booking.id)
+
+      if (updateError) throw updateError
+
+      console.log('[SMS Reply] Booking updated:', {
+        bookingId: booking.id,
+        newStatus: statusMap[interpretation],
+        interpretation,
+      })
+    } catch (err) {
+      console.error('[SMS Reply] DB operation failed:', {
+        bookingId: booking.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      // Continue processing other bookings
+    }
   }
 
   // Send auto-reply SMS for confirmed/cancelled (fire-and-forget)
@@ -81,6 +144,13 @@ export async function POST(request: NextRequest) {
       console.error(`Auto-reply SMS failed for ${phone.slice(0, 6)}***:`, err)
     })
   }
+
+  console.log('[SMS Reply] Webhook processed:', {
+    phone: normalizedPhone?.slice(0, 6) + '***',
+    interpretation,
+    bookingsUpdated: bookings?.length || 0,
+    autoReplySent: !!autoReply,
+  })
 
   // Must return 200 quickly (Octopush requirement)
   return new NextResponse(null, { status: 200 })

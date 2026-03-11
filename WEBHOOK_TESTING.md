@@ -26,6 +26,7 @@ The webhook at `/api/webhooks/octopush/delivery` receives delivery status update
 **Note**: This is a **one-time manual configuration** per environment (staging/production).
 
 The webhook URLs for your deployment will be:
+
 - Delivery: `https://your-domain.vercel.app/api/webhooks/octopush/delivery`
 - Reply: `https://your-domain.vercel.app/api/sms/reply`
 
@@ -54,11 +55,13 @@ ngrok http 3000
 ```
 
 **Pros**:
+
 - Quick setup
 - Real-time local debugging
 - See logs immediately
 
 **Cons**:
+
 - URL changes on each restart (free tier)
 - Requires keeping tunnel open
 
@@ -79,11 +82,13 @@ git push origin your-branch-name
 ```
 
 **Pros**:
+
 - Stable URL
 - Matches production environment
 - Easy to share with team
 
 **Cons**:
+
 - Slower iteration (need to push changes)
 - Check logs in Vercel dashboard
 
@@ -108,11 +113,13 @@ npx tsx scripts/test-webhook.ts --all
 ```
 
 **Pros**:
+
 - No external services needed
 - Fast iteration
 - Test all status codes easily
 
 **Cons**:
+
 - Requires real octopush_ticket from DB
 - Doesn't test actual Octopush integration
 
@@ -153,12 +160,14 @@ git push origin main
 ### Step 5: Monitor Logs
 
 **Vercel Dashboard**:
+
 1. Go to your project
 2. Click "Logs" tab
 3. Filter by `/api/webhooks/octopush/delivery`
 4. Look for `[Webhook]` entries
 
 **Expected Log Sequence**:
+
 ```
 [Webhook] Octopush delivery webhook received
 [Webhook] Parsed body: {...}
@@ -190,6 +199,7 @@ LIMIT 5;
 ```
 
 **Expected States**:
+
 - `sms_sends.status`: `delivered`
 - `sms_sends.delivery_status`: `DELIVERED`
 - `bookings.status`: `sms_delivered`
@@ -230,14 +240,14 @@ LIMIT 5;
 
 ## Webhook Status Codes
 
-| Octopush Status | Our Action |
-|----------------|-----------|
-| `DELIVERED` | Update to `delivered`, booking to `sms_delivered` |
-| `NOT_DELIVERED` (attempts < 3) | Mark for retry |
-| `NOT_DELIVERED` (attempts ≥ 3) | Permanent failure |
-| `BAD_DESTINATION` | Permanent failure |
-| `BLACKLISTED_NUMBER` | Permanent failure |
-| `UNKNOWN_DELIVERY` | Log only, no status change |
+| Octopush Status                | Our Action                                        |
+| ------------------------------ | ------------------------------------------------- |
+| `DELIVERED`                    | Update to `delivered`, booking to `sms_delivered` |
+| `NOT_DELIVERED` (attempts < 3) | Mark for retry                                    |
+| `NOT_DELIVERED` (attempts ≥ 3) | Permanent failure                                 |
+| `BAD_DESTINATION`              | Permanent failure                                 |
+| `BLACKLISTED_NUMBER`           | Permanent failure                                 |
+| `UNKNOWN_DELIVERY`             | Log only, no status change                        |
 
 ## Troubleshooting
 
@@ -246,7 +256,8 @@ LIMIT 5;
 1. **Check Octopush Dashboard**: Verify webhook URL is configured correctly
 2. **Check URL**: Ensure it's HTTPS (required by Octopush)
 3. **Check Logs**: Look for any webhook calls in Vercel logs
-4. **Test Endpoint**: Visit `/api/webhooks/octopush/status` to verify it's accessible
+4. **Test Endpoint**: Visit `/api/webhooks/octopush/status
+5. ` to verify it's accessible
 
 ### Webhook Receiving Calls But Not Updating
 
@@ -270,20 +281,24 @@ LIMIT 5;
 ## Success Criteria
 
 ✅ **Webhook Configuration**
+
 - Webhook URL configured in Octopush Dashboard
 - Status endpoint returns correct URLs
 
 ✅ **Database Updates**
+
 - Index created on `octopush_ticket`
 - SMS status updates to `delivered`
 - Booking status updates to `sms_delivered`
 
 ✅ **Logging**
+
 - Webhook logs appear in Vercel dashboard
 - All status codes logged correctly
 - Errors logged with context
 
 ✅ **End-to-End Flow**
+
 - Send SMS → status `sms_sent`
 - Receive webhook → status `sms_delivered`
 - Reply "OUI" → status `confirmed`
