@@ -23,7 +23,9 @@ export function isToday(utcTimestamp: string | null): boolean {
  * Check if a YYYY-MM-DD date string is today in browser's local timezone
  */
 export function isDateToday(isoDate: string): boolean {
-  const today = new Date().toISOString().split('T')[0]
+  // Use local timezone (fr-CA gives YYYY-MM-DD format)
+  // Avoids UTC bug where after 23h/22h local time, UTC date is already tomorrow
+  const today = new Date().toLocaleDateString('fr-CA')
   return isoDate === today
 }
 
@@ -31,9 +33,11 @@ export function isDateToday(isoDate: string): boolean {
  * Check if a YYYY-MM-DD date string is tomorrow in browser's local timezone
  */
 export function isDateTomorrow(isoDate: string): boolean {
+  // Use local timezone (fr-CA gives YYYY-MM-DD format)
+  // Avoids UTC bug where after 23h/22h local time, UTC date is already tomorrow
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowStr = tomorrow.toISOString().split('T')[0]
+  const tomorrowStr = tomorrow.toLocaleDateString('fr-CA')
   return isoDate === tomorrowStr
 }
 

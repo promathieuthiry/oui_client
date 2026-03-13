@@ -59,6 +59,14 @@ describe('date utilities', () => {
       mockToday(2026, 3, 13)
       expect(isDateToday('2026-03-14')).toBe(false)
     })
+
+    it('should use local timezone, not UTC (edge case at 23h)', () => {
+      // At 23:00 local time on March 13, UTC is already March 14
+      // This test verifies we use local timezone, not UTC
+      vi.setSystemTime(new Date(2026, 2, 13, 23, 30, 0))
+      expect(isDateToday('2026-03-13')).toBe(true)
+      expect(isDateToday('2026-03-14')).toBe(false)
+    })
   })
 
   describe('isDateTomorrow', () => {
@@ -80,6 +88,14 @@ describe('date utilities', () => {
     it('should handle month boundaries', () => {
       mockToday(2026, 3, 31)
       expect(isDateTomorrow('2026-04-01')).toBe(true)
+    })
+
+    it('should use local timezone, not UTC (edge case at 23h)', () => {
+      // At 23:00 local time on March 13, UTC is already March 14
+      // This test verifies we use local timezone, not UTC
+      vi.setSystemTime(new Date(2026, 2, 13, 23, 30, 0))
+      expect(isDateTomorrow('2026-03-14')).toBe(true)
+      expect(isDateTomorrow('2026-03-15')).toBe(false)
     })
   })
 
