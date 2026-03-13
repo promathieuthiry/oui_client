@@ -1,12 +1,25 @@
 'use client'
 
-import { useState } from 'react'
-import { maskPhone } from '@/lib/utils/phone'
+import { useState, useEffect } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { formatPhone, formatDateFr } from '@/lib/utils/phone'
+import { createClient } from '@/lib/supabase/client'
 
 interface Booking {
   id: string
   phone: string
   guest_name: string
+  booking_date: string
+  booking_time: string
+  party_size: number
+}
+
+interface Restaurant {
+  id: string
+  name: string
+  sms_template: string
+  sms_template_jj: string
+  sms_template_relance: string
 }
 
 interface SendConfirmationProps {
@@ -32,6 +45,52 @@ export function SendConfirmation({
     skipped: number
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
+  const [customMessage, setCustomMessage] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  // Fetch restaurant data on mount
+  useEffect(() => {
+    async function fetchRestaurant() {
+      const supabase = createClient()
+
+      const { data } = await supabase
+        .from('restaurants')
+        .select('id, name, sms_template, sms_template_jj, sms_template_relance')
+        .eq('id', restaurantId)
+        .single()
+
+      setRestaurant(data)
+      setLoading(false)
+    }
+    fetchRestaurant()
+  }, [restaurantId])
+
+  // Populate customMessage when template type changes
+  useEffect(() => {
+    if (!restaurant) return
+
+    const template = templateType === 'jj'
+      ? restaurant.sms_template_jj
+      : templateType === 'relance'
+      ? restaurant.sms_template_relance
+      : restaurant.sms_template
+
+    setCustomMessage(template || '')
+  }, [templateType, restaurant])
+
+  // Generate preview with first booking's data
+  function renderPreview(): string {
+    if (!restaurant || !customMessage || bookings.length === 0) return ''
+
+    const firstBooking = bookings[0]
+    return customMessage
+      .replace(/\{restaurant\}/g, restaurant.name)
+      .replace(/\{date\}/g, formatDateFr(firstBooking.booking_date))
+      .replace(/\{heure\}/g, firstBooking.booking_time.slice(0, 5))
+      .replace(/\{couverts\}/g, String(firstBooking.party_size))
+      .replace(/\{nom\}/g, firstBooking.guest_name)
+  }
 
   async function handleSend() {
     setSending(true)
@@ -45,6 +104,7 @@ export function SendConfirmation({
           restaurant_id: restaurantId,
           booking_date: bookingDate,
           booking_ids: bookings.map((b) => b.id),
+          custom_message: customMessage,
           ...(templateType && { template_type: templateType }),
         }),
       })
@@ -68,88 +128,144 @@ export function SendConfirmation({
 
   if (result) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">Envoi terminé</h3>
-        <div className="space-y-1 text-sm">
-          <p className="text-green-600">{result.sent} SMS envoyé(s)</p>
-          {result.failed > 0 && (
-            <p className="text-red-600">{result.failed} échec(s)</p>
-          )}
-          {result.skipped > 0 && (
-            <p className="text-gray-500">{result.skipped} ignoré(s) (déjà envoyés)</p>
-          )}
-        </div>
-        <button
-          onClick={onCancel}
-          className="text-sm text-blue-600 hover:text-blue-800"
-        >
-          Fermer
-        </button>
-      </div>
+      <Dialog.Root open={true} onOpenChange={(open) => !open && onCancel?.()}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl">
+            <Dialog.Title className="text-lg font-medium text-gray-900 mb-4">
+              Envoi terminé
+            </Dialog.Title>
+            <Dialog.Description className="space-y-1 text-sm mb-6">
+              <p className="text-green-600">{result.sent} SMS envoyé(s)</p>
+              {result.failed > 0 && (
+                <p className="text-red-600">{result.failed} échec(s)</p>
+              )}
+              {result.skipped > 0 && (
+                <p className="text-gray-500">{result.skipped} ignoré(s) (déjà envoyés)</p>
+              )}
+            </Dialog.Description>
+            <div className="flex justify-end">
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Fermer
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+    )
+  }
+
+  if (loading) {
+    return (
+      <Dialog.Root open={true} onOpenChange={(open) => !open && onCancel?.()}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl">
+            <p className="text-sm text-gray-500">Chargement...</p>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     )
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
-      <h3 className="text-lg font-medium text-gray-900">
-        Confirmer l&apos;envoi des SMS
-      </h3>
+    <Dialog.Root open={true} onOpenChange={(open) => !open && !sending && onCancel?.()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <Dialog.Title className="text-lg font-medium text-gray-900 mb-4">
+            Confirmer l&apos;envoi des SMS
+          </Dialog.Title>
 
-      <p className="text-sm text-gray-600">
-        {bookings.length} SMS seront envoyés pour le {bookingDate} :
-      </p>
+          <Dialog.Description className="text-sm text-gray-600 mb-4">
+            {bookings.length} SMS seront envoyés pour le {formatDateFr(bookingDate)} :
+          </Dialog.Description>
 
-      <ul className="text-sm text-gray-500 space-y-1 max-h-40 overflow-y-auto">
-        {bookings.map((b) => (
-          <li key={b.id} className="font-mono">
-            {b.guest_name} — {maskPhone(b.phone)}
-          </li>
-        ))}
-      </ul>
+          <ul className="text-sm text-gray-500 space-y-1 max-h-40 overflow-y-auto mb-4">
+            {bookings.map((b) => (
+              <li key={b.id} className="font-mono">
+                {b.guest_name} — {formatPhone(b.phone)}
+              </li>
+            ))}
+          </ul>
 
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-gray-700">Modèle de SMS</legend>
-        {([
-          { value: '', label: 'Rappel J-1' },
-          { value: 'jj', label: 'Rappel Jour J' },
-          { value: 'relance', label: 'Relance' },
-        ] as const).map((option) => (
-          <label key={option.value} className="flex items-center gap-2 text-sm text-gray-600">
-            <input
-              type="radio"
-              name="template_type"
-              value={option.value}
-              checked={templateType === option.value}
-              onChange={() => setTemplateType(option.value)}
-              className="accent-blue-600"
+          <fieldset className="space-y-2 mb-4">
+            <legend className="text-sm font-medium text-gray-700">Modèle de SMS</legend>
+            {([
+              { value: '', label: 'Rappel J-1' },
+              { value: 'jj', label: 'Rappel Jour J' },
+              { value: 'relance', label: 'Relance' },
+            ] as const).map((option) => (
+              <label key={option.value} className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="radio"
+                  name="template_type"
+                  value={option.value}
+                  checked={templateType === option.value}
+                  onChange={() => setTemplateType(option.value)}
+                  className="accent-blue-600"
+                />
+                {option.label}
+              </label>
+            ))}
+          </fieldset>
+
+          <div className="space-y-2 mb-4">
+            <label className="text-sm font-medium text-gray-700">
+              Message personnalisable
+            </label>
+            <textarea
+              value={customMessage}
+              onChange={(e) => setCustomMessage(e.target.value)}
+              className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono"
+              placeholder="Sélectionnez un modèle ci-dessus..."
             />
-            {option.label}
-          </label>
-        ))}
-      </fieldset>
+            <p className="text-xs text-gray-500">
+              Placeholders disponibles : {'{restaurant}'}, {'{nom}'}, {'{date}'}, {'{heure}'}, {'{couverts}'}
+            </p>
+          </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-          {error}
-        </div>
-      )}
+          {customMessage && (
+            <div className="bg-gray-50 border border-gray-200 rounded-md p-3 space-y-2 mb-4">
+              <p className="text-xs font-medium text-gray-700">
+                Aperçu (exemple avec {bookings[0]?.guest_name})
+              </p>
+              <p className="text-sm text-gray-900 whitespace-pre-wrap font-mono">
+                {renderPreview()}
+              </p>
+              <p className="text-xs text-gray-500 italic">
+                Le message sera personnalisé pour chaque réservation
+              </p>
+            </div>
+          )}
 
-      <div className="flex space-x-3">
-        <button
-          onClick={handleSend}
-          disabled={sending}
-          className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-        >
-          {sending ? 'Envoi en cours...' : 'Envoyer les SMS'}
-        </button>
-        <button
-          onClick={onCancel}
-          disabled={sending}
-          className="bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 text-sm font-medium"
-        >
-          Annuler
-        </button>
-      </div>
-    </div>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm mb-4">
+              {error}
+            </div>
+          )}
+
+          <div className="flex space-x-3 justify-end mt-6">
+            <button
+              onClick={onCancel}
+              disabled={sending}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={sending || !customMessage.trim()}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {sending ? 'Envoi en cours...' : 'Envoyer les SMS'}
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

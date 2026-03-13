@@ -9,6 +9,7 @@ import { SendConfirmation } from '@/components/send-confirmation'
 import { RecapPreview } from '@/components/recap-preview'
 import { AddBookingForm } from '@/components/add-booking-form'
 import { CSVImportModal } from '@/components/csv-import-modal'
+import { DeleteConfirmationModal } from '@/components/delete-confirmation-modal'
 import type { Service } from '@/lib/constants'
 
 interface Booking {
@@ -55,6 +56,9 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, forceRefresh] = useReducer((c: number) => c + 1, 0)
+  const [deletingSingleIds, setDeletingSingleIds] = useState<Set<string>>(new Set())
+  const [singleBookingToSend, setSingleBookingToSend] = useState<Booking | null>(null)
+  const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null)
   const supabase = createClient()
 
   function refreshBookings() {
@@ -150,6 +154,45 @@ export default function BookingsPage() {
     setDeleting(false)
   }
 
+  function handleSendSingle(bookingId: string) {
+    const booking = bookings.find((b) => b.id === bookingId)
+    if (!booking) return
+    setSingleBookingToSend(booking)
+  }
+
+  function handleDeleteClick(bookingId: string) {
+    const booking = bookings.find((b) => b.id === bookingId)
+    if (!booking) return
+    setBookingToDelete(booking)
+  }
+
+  async function confirmDelete() {
+    if (!bookingToDelete) return
+
+    setDeletingSingleIds((prev) => new Set(prev).add(bookingToDelete.id))
+    setError(null)
+
+    const { error } = await supabase
+      .from('bookings')
+      .delete()
+      .eq('id', bookingToDelete.id)
+
+    if (error) {
+      console.error('Failed to delete booking:', error)
+      setError(`Impossible de supprimer la réservation: ${error.message}`)
+    } else {
+      refreshBookings()
+    }
+
+    setDeletingSingleIds((prev) => {
+      const next = new Set(prev)
+      next.delete(bookingToDelete.id)
+      return next
+    })
+
+    setBookingToDelete(null)
+  }
+
   const pendingBookings = bookings.filter(
     (b) => b.status === 'pending' && !b.sms_sent_at
   )
@@ -185,25 +228,6 @@ export default function BookingsPage() {
           >
             Importer CSV
           </button>
-          {selectedIds.size > 0 && (
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
-            >
-              {deleting
-                ? 'Suppression...'
-                : `Supprimer (${selectedIds.size})`}
-            </button>
-          )}
-          {bookingsToSend.length > 0 && (
-            <button
-              onClick={() => setShowSendDialog(true)}
-              className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 text-sm font-medium"
-            >
-              Envoyer les SMS ({bookingsToSend.length})
-            </button>
-          )}
         </div>
       </div>
 
@@ -249,6 +273,28 @@ export default function BookingsPage() {
             refreshBookings()
           }}
           onCancel={() => setShowSendDialog(false)}
+        />
+      )}
+
+      {singleBookingToSend && restaurantId && (
+        <SendConfirmation
+          bookings={[singleBookingToSend]}
+          restaurantId={restaurantId}
+          bookingDate={selectedDate}
+          onSendComplete={() => {
+            setSingleBookingToSend(null)
+            refreshBookings()
+          }}
+          onCancel={() => setSingleBookingToSend(null)}
+        />
+      )}
+
+      {bookingToDelete && (
+        <DeleteConfirmationModal
+          booking={bookingToDelete}
+          onConfirm={confirmDelete}
+          onCancel={() => setBookingToDelete(null)}
+          isDeleting={deletingSingleIds.has(bookingToDelete.id)}
         />
       )}
 
@@ -302,6 +348,13 @@ export default function BookingsPage() {
             bookings={bookings}
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
+            onSendSms={handleSendSingle}
+            onDelete={handleDeleteClick}
+            deletingIds={deletingSingleIds}
+            onBulkDelete={handleDelete}
+            onBulkSendSms={() => setShowSendDialog(true)}
+            bulkDeleting={deleting}
+            bookingsToSend={bookingsToSend}
           />
 
           {bookings.length > 0 && restaurantId && (
