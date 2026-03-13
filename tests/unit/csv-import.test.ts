@@ -97,4 +97,31 @@ describe('importCSV', () => {
     expect(result.imported).toBe(0)
     expect(result.errors).toHaveLength(0)
   })
+
+  it('should handle CSV values with commas in quotes', async () => {
+    // Test that PapaParse correctly handles quoted values containing commas
+    const csv = [
+      'guest_name,phone,booking_date,booking_time,party_size',
+      `"Dupont, Jean",0612345678,${tomorrow},19:30,4`,
+      `"Martin, Marie-Claire",0698765432,${tomorrow},20:00,2`,
+    ].join('\n')
+
+    const db = mockDb()
+    const result = await importCSV(csv, 'rest-1', db)
+
+    expect(result.imported).toBe(2)
+    expect(result.errors).toHaveLength(0)
+    expect(db.upsertBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guest_name: 'Dupont, Jean',
+        phone: '+33612345678',
+      })
+    )
+    expect(db.upsertBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guest_name: 'Martin, Marie-Claire',
+        phone: '+33698765432',
+      })
+    )
+  })
 })

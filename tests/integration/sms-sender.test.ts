@@ -20,6 +20,7 @@ describe('sendSMSToBookings', () => {
     party_size: 4,
     status: 'pending',
     sms_sent_at: null,
+    service: 'soir',
     ...overrides,
   })
 
@@ -98,7 +99,7 @@ describe('sendSMSToBookings', () => {
     const callArgs = mockSendSMS.mock.calls[0]
     expect(callArgs[0]).toBe('+33612345678')
     expect(callArgs[1]).toContain('Le Bon Restaurant')
-    expect(callArgs[1]).toContain('2026-03-09')
+    expect(callArgs[1]).toContain('09/03/2026')
     expect(callArgs[1]).toContain('19:30')
     expect(callArgs[1]).toContain('4')
   })

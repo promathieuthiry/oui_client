@@ -6,8 +6,10 @@ import { sendSMSToBookings } from '@/lib/services/sms-sender'
 const bodySchema = z.object({
   restaurant_id: z.string().uuid(),
   booking_date: z.string(),
-  template_type: z.enum(['jj', 'relance']).optional(),
+  template_type: z.enum(['jj', 'relance']).optional(), // Backward compatibility
+  sms_type: z.enum(['rappel_j1', 'rappel_jj', 'relance']).optional(),
   booking_ids: z.array(z.string().uuid()).optional(),
+  custom_message: z.string().max(612).optional(), // ~4 SMS segments (160 chars each)
 })
 
 export async function POST(request: NextRequest) {
@@ -28,7 +30,16 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { restaurant_id, booking_date, template_type, booking_ids } = parsed.data
+  const { restaurant_id, booking_date, template_type, sms_type, booking_ids, custom_message } = parsed.data
+
+  // Determine SMS type (prefer sms_type, fallback to template_type for backward compatibility)
+  let effectiveSmsType: 'rappel_j1' | 'rappel_jj' | 'relance' | undefined
+  if (sms_type) {
+    effectiveSmsType = sms_type
+  } else if (template_type) {
+    // Map old template_type to new sms_type
+    effectiveSmsType = template_type === 'jj' ? 'rappel_jj' : 'relance'
+  }
 
   // Get restaurant
   const { data: restaurant, error: restError } = await supabase
@@ -44,35 +55,67 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Select the correct template based on type
-  const templateKey =
-    template_type === 'jj'
-      ? 'sms_template_jj'
-      : template_type === 'relance'
-        ? 'sms_template_relance'
-        : 'sms_template'
+  // If custom_message provided, use it; otherwise fall back to template selection
+  let messageToSend: string
 
-  const selectedTemplate = restaurant[templateKey]
-  if (!selectedTemplate) {
-    return NextResponse.json(
-      { error: 'Le modèle SMS sélectionné est vide. Configurez-le dans les paramètres du restaurant.' },
-      { status: 400 }
-    )
+  if (custom_message) {
+    messageToSend = custom_message
+  } else {
+    // Determine template based on SMS type
+    let templateKey: 'sms_template' | 'sms_template_jj' | 'sms_template_relance' = 'sms_template'
+
+    if (effectiveSmsType === 'rappel_jj') {
+      templateKey = 'sms_template_jj'
+    } else if (effectiveSmsType === 'relance') {
+      templateKey = 'sms_template_relance'
+    }
+
+    messageToSend = restaurant[templateKey]
+
+    if (!messageToSend) {
+      return NextResponse.json(
+        { error: 'Le modèle SMS sélectionné est vide. Configurez-le dans les paramètres du restaurant.' },
+        { status: 400 }
+      )
+    }
   }
 
   const selectedRestaurant = {
     ...restaurant,
-    sms_template: selectedTemplate,
+    sms_template: messageToSend,
   }
 
-  // Get pending bookings for this date
+  // Get bookings for this date with query logic based on SMS type
   let query = supabase
     .from('bookings')
     .select('*')
     .eq('restaurant_id', restaurant_id)
     .eq('booking_date', booking_date)
-    .is('sms_sent_at', null)
-    .in('status', ['pending'])
+
+  // Different query logic based on SMS type
+  if (effectiveSmsType === 'rappel_j1') {
+    // Rappel J-1: get bookings without any SMS sent
+    query = query
+      .is('sms_sent_at', null)
+      .in('status', ['pending'])
+  } else if (effectiveSmsType === 'rappel_jj') {
+    // Rappel Jour J: get bookings with J-1 sent but not Jour J
+    // OR pending bookings for same-day (no J-1 sent)
+    query = query
+      .is('reminder_sent_at', null)
+      .in('status', ['pending', 'sms_sent', 'sms_delivered'])
+  } else if (effectiveSmsType === 'relance') {
+    // Relance: get bookings with Jour J sent but not Relance
+    query = query
+      .not('reminder_sent_at', 'is', null)
+      .is('relance_sent_at', null)
+      .in('status', ['sms_sent', 'sms_delivered'])
+  } else {
+    // Fallback: pending bookings without SMS (for backward compatibility)
+    query = query
+      .is('sms_sent_at', null)
+      .in('status', ['pending'])
+  }
 
   if (booking_ids && booking_ids.length > 0) {
     query = query.in('id', booking_ids)
@@ -96,14 +139,25 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  const result = await sendSMSToBookings(bookings, selectedRestaurant, {
-    createSmsSend: async (data) => {
-      await supabase.from('sms_sends').insert(data)
+  const result = await sendSMSToBookings(
+    bookings,
+    selectedRestaurant,
+    {
+      createSmsSend: async (data) => {
+        const { error } = await supabase.from('sms_sends').insert(data)
+        if (error) {
+          throw new Error(`Failed to create SMS send record: ${error.message}`)
+        }
+      },
+      updateBooking: async (id, data) => {
+        const { error } = await supabase.from('bookings').update(data).eq('id', id)
+        if (error) {
+          throw new Error(`Failed to update booking ${id}: ${error.message}`)
+        }
+      },
     },
-    updateBooking: async (id, data) => {
-      await supabase.from('bookings').update(data).eq('id', id)
-    },
-  })
+    { smsType: effectiveSmsType }
+  )
 
   return NextResponse.json(result)
 }
