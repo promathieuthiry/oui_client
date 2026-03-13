@@ -89,7 +89,7 @@ export default function BookingsPage() {
   )
 
   // Countdown timer for next refresh
-  const secondsUntilRefresh = useRefreshTimer(60000)
+  const { secondsUntilRefresh, resetTimer } = useRefreshTimer(60000)
 
   const error = swrError ? 'Impossible de charger les réservations.' : null
   const loading = isLoading
@@ -260,7 +260,10 @@ export default function BookingsPage() {
 
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => mutate()}
+            onClick={() => {
+              mutate()
+              resetTimer()
+            }}
             className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-3 rounded-md border border-gray-300 text-sm font-medium transition-colors"
             title="Actualiser maintenant"
           >
