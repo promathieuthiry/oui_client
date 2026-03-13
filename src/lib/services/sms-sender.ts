@@ -1,5 +1,5 @@
 import { sendSMS } from '@/lib/services/octopush'
-import { maskPhone } from '@/lib/utils/phone'
+import { maskPhone, formatDateFr } from '@/lib/utils/phone'
 import type { Service } from '@/lib/constants'
 
 interface Booking {
@@ -53,12 +53,13 @@ interface DBCallbacks {
 
 export function formatTemplate(
   template: string,
-  booking: Pick<Booking, 'booking_date' | 'booking_time' | 'party_size'>,
+  booking: Pick<Booking, 'booking_date' | 'booking_time' | 'party_size' | 'guest_name'>,
   restaurant: Pick<Restaurant, 'name'>
 ): string {
   return template
     .replace(/\{restaurant\}/g, restaurant.name)
-    .replace(/\{date\}/g, booking.booking_date)
+    .replace(/\{nom\}/g, booking.guest_name)
+    .replace(/\{date\}/g, formatDateFr(booking.booking_date))
     .replace(/\{heure\}/g, booking.booking_time.slice(0, 5))
     .replace(/\{couverts\}/g, String(booking.party_size))
 }

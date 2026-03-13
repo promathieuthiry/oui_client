@@ -1,23 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendSMS } from '@/lib/services/octopush'
+import { formatTemplate } from '@/lib/services/sms-sender'
 import { maskPhone } from '@/lib/utils/phone'
 
 export const dynamic = 'force-dynamic'
-
-function formatTemplate(
-  template: string,
-  booking: { booking_time: string; party_size: number; booking_date: string },
-  restaurantName: string
-): string {
-  const message = template
-    .replace(/\{restaurant\}/g, restaurantName)
-    .replace(/\{date\}/g, booking.booking_date)
-    .replace(/\{heure\}/g, booking.booking_time.slice(0, 5))
-    .replace(/\{couverts\}/g, String(booking.party_size))
-
-  return message
-}
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -33,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const { data: bookings, error: bookError } = await supabase
     .from('bookings')
-    .select('*, restaurants!inner(id, name, sms_template_jj)')
+    .select('id, phone, guest_name, booking_date, booking_time, party_size, restaurants!inner(id, name, sms_template_jj)')
     .eq('booking_date', today)
     .in('status', ['pending', 'sms_sent'])
     .is('reminder_sent_at', null)
@@ -59,7 +46,7 @@ export async function GET(request: NextRequest) {
       name: string
       sms_template_jj: string
     }
-    const message = formatTemplate(restaurant.sms_template_jj, booking, restaurant.name)
+    const message = formatTemplate(restaurant.sms_template_jj, booking, restaurant)
 
     const smsResult = await sendSMS(booking.phone, message)
 

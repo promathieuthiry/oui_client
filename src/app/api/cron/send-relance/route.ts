@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   // Target today's bookings that got an SMS but never replied, and haven't been relanced yet
   const { data: bookings, error: bookError } = await supabase
     .from('bookings')
-    .select('*, restaurants!inner(id, name, sms_template_relance)')
+    .select('id, phone, guest_name, booking_date, booking_time, party_size, restaurants!inner(id, name, sms_template_relance)')
     .eq('booking_date', today)
     .eq('status', 'sms_sent')
     .is('relance_sent_at', null)

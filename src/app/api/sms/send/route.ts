@@ -8,6 +8,7 @@ const bodySchema = z.object({
   booking_date: z.string(),
   template_type: z.enum(['jj', 'relance']).optional(),
   booking_ids: z.array(z.string().uuid()).optional(),
+  custom_message: z.string().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { restaurant_id, booking_date, template_type, booking_ids } = parsed.data
+  const { restaurant_id, booking_date, template_type, booking_ids, custom_message } = parsed.data
 
   // Get restaurant
   const { data: restaurant, error: restError } = await supabase
@@ -44,25 +45,32 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Select the correct template based on type
-  const templateKey =
-    template_type === 'jj'
-      ? 'sms_template_jj'
-      : template_type === 'relance'
-        ? 'sms_template_relance'
-        : 'sms_template'
+  // If custom_message provided, use it; otherwise fall back to template selection
+  let messageToSend: string
 
-  const selectedTemplate = restaurant[templateKey]
-  if (!selectedTemplate) {
-    return NextResponse.json(
-      { error: 'Le modèle SMS sélectionné est vide. Configurez-le dans les paramètres du restaurant.' },
-      { status: 400 }
-    )
+  if (custom_message) {
+    messageToSend = custom_message
+  } else {
+    const templateKey =
+      template_type === 'jj'
+        ? 'sms_template_jj'
+        : template_type === 'relance'
+          ? 'sms_template_relance'
+          : 'sms_template'
+
+    messageToSend = restaurant[templateKey]
+
+    if (!messageToSend) {
+      return NextResponse.json(
+        { error: 'Le modèle SMS sélectionné est vide. Configurez-le dans les paramètres du restaurant.' },
+        { status: 400 }
+      )
+    }
   }
 
   const selectedRestaurant = {
     ...restaurant,
-    sms_template: selectedTemplate,
+    sms_template: messageToSend,
   }
 
   // Get pending bookings for this date
