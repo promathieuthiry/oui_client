@@ -11,7 +11,7 @@ interface Booking {
 
 interface DeleteConfirmationModalProps {
   booking: Booking
-  onConfirm: () => void
+  onConfirm: () => void | Promise<void>
   onCancel: () => void
   isDeleting: boolean
   error?: string | null
