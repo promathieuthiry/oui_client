@@ -11,6 +11,8 @@ interface Booking {
   party_size: number
   status: string
   sms_sent_at: string | null
+  reminder_sent_at: string | null
+  relance_sent_at: string | null
   service: Service
 }
 
@@ -47,8 +49,17 @@ interface DBCallbacks {
   }) => Promise<void>
   updateBooking: (
     id: string,
-    data: { sms_sent_at?: string; status?: string }
+    data: {
+      sms_sent_at?: string
+      reminder_sent_at?: string
+      relance_sent_at?: string
+      status?: string
+    }
   ) => Promise<void>
+}
+
+interface SendOptions {
+  smsType?: 'rappel_j1' | 'rappel_jj' | 'relance'
 }
 
 export function formatTemplate(
@@ -67,18 +78,38 @@ export function formatTemplate(
 export async function sendSMSToBookings(
   bookings: Booking[],
   restaurant: Restaurant,
-  db: DBCallbacks
+  db: DBCallbacks,
+  options: SendOptions = {}
 ): Promise<SendResult> {
   const result: SendResult = { sent: 0, failed: 0, skipped: 0, details: [] }
+  const { smsType } = options
 
   for (const booking of bookings) {
-    // Idempotency: skip if already sent
-    if (booking.sms_sent_at) {
+    // Idempotency checks based on SMS type
+    let shouldSkip = false
+    let skipReason = ''
+
+    if (smsType === 'rappel_j1' && booking.sms_sent_at) {
+      shouldSkip = true
+      skipReason = 'Rappel J-1 already sent'
+    } else if (smsType === 'rappel_jj' && booking.reminder_sent_at) {
+      shouldSkip = true
+      skipReason = 'Rappel Jour J already sent'
+    } else if (smsType === 'relance' && booking.relance_sent_at) {
+      shouldSkip = true
+      skipReason = 'Relance already sent'
+    } else if (!smsType && booking.sms_sent_at) {
+      // Fallback for backward compatibility
+      shouldSkip = true
+      skipReason = 'Already sent'
+    }
+
+    if (shouldSkip) {
       result.skipped++
       result.details.push({
         booking_id: booking.id,
         status: 'skipped',
-        reason: 'Already sent',
+        reason: skipReason,
       })
       continue
     }
@@ -103,11 +134,31 @@ export async function sendSMSToBookings(
     })
 
     if (smsResult.success) {
-      await db.updateBooking(booking.id, { sms_sent_at: now, status: 'sms_sent' })
+      const updateData: {
+        sms_sent_at?: string
+        reminder_sent_at?: string
+        relance_sent_at?: string
+        status?: string
+      } = {
+        status: 'sms_sent'
+      }
+
+      // Update the correct timestamp field based on SMS type
+      if (smsType === 'rappel_j1' || !smsType) {
+        updateData.sms_sent_at = now
+      } else if (smsType === 'rappel_jj') {
+        updateData.reminder_sent_at = now
+      } else if (smsType === 'relance') {
+        updateData.relance_sent_at = now
+      }
+
+      await db.updateBooking(booking.id, updateData)
       result.sent++
       result.details.push({ booking_id: booking.id, status: 'sent' })
+
+      const smsTypeLabel = smsType ? `(${smsType}) ` : ''
       console.log(
-        `SMS sent to ${maskPhone(booking.phone)} for booking ${booking.id}\n→ ${message}`
+        `SMS ${smsTypeLabel}sent to ${maskPhone(booking.phone)} for booking ${booking.id}\n→ ${message}`
       )
     } else {
       await db.updateBooking(booking.id, { status: 'send_failed' })

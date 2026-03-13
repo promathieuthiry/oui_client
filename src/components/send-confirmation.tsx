@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { formatPhone, formatDateFr } from '@/lib/utils/phone'
+import { getNextSmsAction } from '@/lib/utils/sms-flow'
 import { createClient } from '@/lib/supabase/client'
 
 interface Booking {
@@ -12,6 +13,10 @@ interface Booking {
   booking_date: string
   booking_time: string
   party_size: number
+  sms_sent_at?: string | null
+  reminder_sent_at?: string | null
+  relance_sent_at?: string | null
+  status: string
 }
 
 interface Restaurant {
@@ -66,6 +71,30 @@ export function SendConfirmation({
     fetchRestaurant()
   }, [restaurantId])
 
+  // Auto-set template type based on sequential SMS flow
+  useEffect(() => {
+    if (bookings.length === 0) return
+
+    const firstBooking = bookings[0]
+    const state = getNextSmsAction({
+      booking_date: firstBooking.booking_date,
+      sms_sent_at: firstBooking.sms_sent_at ?? null,
+      reminder_sent_at: firstBooking.reminder_sent_at ?? null,
+      relance_sent_at: firstBooking.relance_sent_at ?? null,
+      status: firstBooking.status,
+    })
+
+    // Map state type to template type
+    const typeMap: Record<string, '' | 'jj' | 'relance'> = {
+      'rappel_j1': '',
+      'rappel_jj': 'jj',
+      'relance': 'relance',
+      'completed': ''
+    }
+
+    setTemplateType(typeMap[state.type] ?? '')
+  }, [bookings])
+
   // Populate customMessage when template type changes
   useEffect(() => {
     if (!restaurant) return
@@ -96,6 +125,14 @@ export function SendConfirmation({
     setSending(true)
     setError(null)
 
+    // Determine SMS type from template type
+    const smsTypeMap: Record<'' | 'jj' | 'relance', 'rappel_j1' | 'rappel_jj' | 'relance'> = {
+      '': 'rappel_j1',
+      'jj': 'rappel_jj',
+      'relance': 'relance'
+    }
+    const smsType = smsTypeMap[templateType]
+
     try {
       const response = await fetch('/api/sms/send', {
         method: 'POST',
@@ -105,7 +142,7 @@ export function SendConfirmation({
           booking_date: bookingDate,
           booking_ids: bookings.map((b) => b.id),
           custom_message: customMessage,
-          ...(templateType && { template_type: templateType }),
+          sms_type: smsType,
         }),
       })
 
@@ -192,26 +229,14 @@ export function SendConfirmation({
             ))}
           </ul>
 
-          <fieldset className="space-y-2 mb-4">
-            <legend className="text-sm font-medium text-gray-700">Modèle de SMS</legend>
-            {([
-              { value: '', label: 'Rappel J-1' },
-              { value: 'jj', label: 'Rappel Jour J' },
-              { value: 'relance', label: 'Relance' },
-            ] as const).map((option) => (
-              <label key={option.value} className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="radio"
-                  name="template_type"
-                  value={option.value}
-                  checked={templateType === option.value}
-                  onChange={() => setTemplateType(option.value)}
-                  className="accent-blue-600"
-                />
-                {option.label}
-              </label>
-            ))}
-          </fieldset>
+          <div className="bg-gray-50 border border-gray-200 p-3 rounded mb-4">
+            <p className="text-sm text-gray-700 mb-1">Type de SMS</p>
+            <p className="text-base font-semibold text-gray-900">
+              {templateType === '' && 'Rappel J-1'}
+              {templateType === 'jj' && 'Rappel Jour J'}
+              {templateType === 'relance' && 'Relance'}
+            </p>
+          </div>
 
           <div className="space-y-2 mb-4">
             <label className="text-sm font-medium text-gray-700">

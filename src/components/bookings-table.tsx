@@ -3,7 +3,7 @@
 import { TrashIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import { StatusBadge } from '@/components/status-badge'
 import { formatPhone } from '@/lib/utils/phone'
-import { canSendRelance } from '@/lib/utils/date'
+import { getNextSmsAction, getButtonText } from '@/lib/utils/sms-flow'
 import { cn } from '@/lib/utils'
 import type { Service } from '@/lib/constants'
 
@@ -17,6 +17,8 @@ interface Booking {
   status: string
   service: Service
   sms_sent_at?: string | null
+  reminder_sent_at?: string | null
+  relance_sent_at?: string | null
 }
 
 interface BookingsTableProps {
@@ -55,19 +57,38 @@ export function BookingsTable({
   const allSelected = bookings.length > 0 && bookings.every((b) => selectedIds.has(b.id))
   const hasSelections = selectedIds.size > 0
 
-  function shouldShowSendSms(booking: Booking): boolean {
-    return (
-      (booking.status === 'pending' && !booking.sms_sent_at) ||
-      booking.status === 'send_failed' ||
-      canSendRelance(booking.sms_sent_at ?? null)
-    )
-  }
+  function renderSmsButton(booking: Booking) {
+    const state = getNextSmsAction({
+      booking_date: booking.booking_date,
+      sms_sent_at: booking.sms_sent_at ?? null,
+      reminder_sent_at: booking.reminder_sent_at ?? null,
+      relance_sent_at: booking.relance_sent_at ?? null,
+      status: booking.status,
+    })
 
-  function getSendButtonText(booking: Booking): string {
-    if (canSendRelance(booking.sms_sent_at ?? null)) {
-      return 'Envoyer Relance'
+    const buttonText = getButtonText(state)
+
+    // No button if completed
+    if (!buttonText) {
+      return null
     }
-    return 'Envoyer SMS'
+
+    // Show button (enabled or disabled with tooltip)
+    return (
+      <button
+        onClick={() => state.enabled && onSendSms?.(booking.id)}
+        disabled={!state.enabled}
+        title={state.enabled ? undefined : state.reason}
+        className={cn(
+          'inline-flex items-center px-2 py-1 text-xs font-medium rounded transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2',
+          state.enabled
+            ? 'text-white bg-blue-600 hover:bg-blue-700 cursor-pointer focus:ring-blue-500'
+            : 'text-gray-400 bg-gray-200 cursor-not-allowed'
+        )}
+      >
+        {buttonText}
+      </button>
+    )
   }
 
   function toggleAll() {
@@ -131,14 +152,7 @@ export function BookingsTable({
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center justify-end gap-2">
-            {shouldShowSendSms(booking) && onSendSms && (
-              <button
-                onClick={() => onSendSms(booking.id)}
-                className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                {getSendButtonText(booking)}
-              </button>
-            )}
+            {onSendSms && renderSmsButton(booking)}
             {onDelete && (
               <button
                 onClick={() => onDelete(booking.id)}
