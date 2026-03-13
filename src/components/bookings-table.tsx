@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { TrashIcon, PaperAirplaneIcon, ChevronRightIcon, PencilIcon } from '@heroicons/react/24/outline'
+import { TrashIcon, PaperAirplaneIcon, ChevronRightIcon, PencilIcon, EllipsisVerticalIcon } from '@heroicons/react/24/outline'
 import { StatusBadge } from '@/components/status-badge'
 import { formatPhone } from '@/lib/utils/phone'
 import { getNextSmsAction, getButtonText } from '@/lib/utils/sms-flow'
@@ -88,8 +88,8 @@ export function BookingsTable({
     { revalidateOnFocus: false }
   )
 
-  function renderSmsButton(booking: Booking) {
-    const state = getNextSmsAction({
+  function renderActionsMenu(booking: Booking) {
+    const smsState = getNextSmsAction({
       booking_date: booking.booking_date,
       sms_sent_at: booking.sms_sent_at ?? null,
       reminder_sent_at: booking.reminder_sent_at ?? null,
@@ -97,28 +97,68 @@ export function BookingsTable({
       status: booking.status,
     })
 
-    const buttonText = getButtonText(state)
+    const smsButtonText = getButtonText(smsState)
+    const isDeleting = deletingIds?.has(booking.id)
 
-    // No button if completed
-    if (!buttonText) {
-      return null
-    }
-
-    // Show button (enabled or disabled with tooltip)
     return (
-      <button
-        onClick={() => state.enabled && onSendSms?.(booking.id)}
-        disabled={!state.enabled}
-        title={state.enabled ? undefined : state.reason}
-        className={cn(
-          'inline-flex items-center px-2 py-1 text-xs font-medium rounded transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2',
-          state.enabled
-            ? 'text-white bg-blue-600 hover:bg-blue-700 cursor-pointer focus:ring-blue-500'
-            : 'text-gray-400 bg-gray-200 cursor-not-allowed'
-        )}
-      >
-        {buttonText}
-      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="inline-flex items-center justify-center p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            aria-label="Actions"
+          >
+            <EllipsisVerticalIcon className="h-5 w-5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {onEdit && (
+            <DropdownMenuItem
+              onClick={() => onEdit(booking.id)}
+              className="gap-2"
+            >
+              <PencilIcon className="h-4 w-4" />
+              <span>Modifier</span>
+            </DropdownMenuItem>
+          )}
+
+          {onSendSms && smsButtonText && (
+            <>
+              {onEdit && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                onClick={() => smsState.enabled && onSendSms(booking.id)}
+                disabled={!smsState.enabled}
+                className={cn(
+                  'gap-2',
+                  smsState.enabled
+                    ? 'text-blue-600 focus:text-blue-600 focus:bg-blue-50'
+                    : 'opacity-50 cursor-not-allowed'
+                )}
+                title={smsState.enabled ? undefined : smsState.reason}
+              >
+                <PaperAirplaneIcon className="h-4 w-4" />
+                <span>{smsButtonText}</span>
+              </DropdownMenuItem>
+            </>
+          )}
+
+          {onDelete && (
+            <>
+              {(onEdit || smsButtonText) && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                onClick={() => onDelete(booking.id)}
+                disabled={isDeleting}
+                className={cn(
+                  'gap-2 text-red-600 focus:text-red-600 focus:bg-red-50',
+                  isDeleting && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                <TrashIcon className="h-4 w-4" />
+                <span>{isDeleting ? 'Suppression...' : 'Supprimer'}</span>
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     )
   }
 
@@ -160,7 +200,7 @@ export function BookingsTable({
           onClick={() => hasReplies && setExpandedId(isExpanded ? null : booking.id)}
         >
           {/* Expansion column */}
-          <td className="px-2 py-4 whitespace-nowrap w-10">
+          <td className="pl-4 pr-1 py-4 whitespace-nowrap w-8">
             {hasReplies && (
               <button
                 onClick={(e) => {
@@ -181,7 +221,7 @@ export function BookingsTable({
           </td>
 
           {/* Checkbox */}
-          <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+          <td className="pl-2 pr-4 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
               checked={selectedIds.has(booking.id)}
@@ -214,27 +254,8 @@ export function BookingsTable({
 
           {/* Actions */}
           <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-end gap-2">
-              {onEdit && (
-                <button
-                  onClick={() => onEdit(booking.id)}
-                  className="inline-flex items-center p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  aria-label="Modifier"
-                >
-                  <PencilIcon className="h-4 w-4" />
-                </button>
-              )}
-              {onSendSms && renderSmsButton(booking)}
-              {onDelete && (
-                <button
-                  onClick={() => onDelete(booking.id)}
-                  disabled={deletingIds?.has(booking.id)}
-                  className="inline-flex items-center p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                  aria-label="Supprimer"
-                >
-                  <TrashIcon className="h-4 w-4" />
-                </button>
-              )}
+            <div className="flex items-center justify-end">
+              {renderActionsMenu(booking)}
             </div>
           </td>
         </tr>,
@@ -418,10 +439,10 @@ export function BookingsTable({
         <thead className="bg-gray-50">
           <tr>
             {/* Expansion column */}
-            <th className="px-2 py-3 w-10" />
+            <th className="pl-4 pr-1 py-3 w-8" />
 
             {/* Checkbox column */}
-            <th className="px-6 py-3 text-left">
+            <th className="pl-2 pr-4 py-3 text-left">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
