@@ -41,26 +41,36 @@ export async function GET(request: NextRequest) {
   let totalFailed = 0
 
   for (const booking of bookings) {
-    const restaurant = booking.restaurants as unknown as {
-      id: string
-      name: string
-      sms_template_jj: string
-    }
-    const message = formatTemplate(restaurant.sms_template_jj, booking, restaurant)
+    try {
+      const restaurant = booking.restaurants as unknown as {
+        id: string
+        name: string
+        sms_template_jj: string
+      }
+      const message = formatTemplate(restaurant.sms_template_jj, booking, restaurant)
 
-    const smsResult = await sendSMS(booking.phone, message)
+      const smsResult = await sendSMS(booking.phone, message)
 
-    if (smsResult.success) {
-      await supabase
-        .from('bookings')
-        .update({ reminder_sent_at: new Date().toISOString() })
-        .eq('id', booking.id)
+      if (smsResult.success) {
+        const { error } = await supabase
+          .from('bookings')
+          .update({ reminder_sent_at: new Date().toISOString() })
+          .eq('id', booking.id)
 
-      totalSent++
-      console.log(`Reminder SMS sent to ${maskPhone(booking.phone)} for booking ${booking.id}`)
-    } else {
+        if (error) {
+          console.error(`Failed to update booking ${booking.id}: ${error.message}`)
+          totalFailed++
+        } else {
+          totalSent++
+          console.log(`Reminder SMS sent to ${maskPhone(booking.phone)} for booking ${booking.id}`)
+        }
+      } else {
+        totalFailed++
+        console.error(`Reminder SMS failed for ${maskPhone(booking.phone)}: ${smsResult.error}`)
+      }
+    } catch (error) {
       totalFailed++
-      console.error(`Reminder SMS failed for ${maskPhone(booking.phone)}: ${smsResult.error}`)
+      console.error(`Error processing booking ${booking.id}:`, error)
     }
   }
 

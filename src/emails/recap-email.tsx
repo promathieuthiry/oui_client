@@ -10,6 +10,7 @@ import {
   Preview,
   Hr,
 } from '@react-email/components'
+import type { Service } from '@/lib/constants'
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
@@ -21,10 +22,12 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 interface RecapBooking {
+  id: string
   guest_name: string
   booking_time: string
   party_size: number
   status: string
+  service: Service
 }
 
 interface RecapEmailProps {
@@ -128,7 +131,7 @@ function BookingTable({
         <tbody>
           {bookings.map((booking) => (
             <tr
-              key={`${booking.booking_time}-${booking.guest_name}`}
+              key={booking.id}
               style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}
             >
               <td style={{ padding: '8px', fontSize: '14px' }}>

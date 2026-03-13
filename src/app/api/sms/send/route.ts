@@ -144,10 +144,16 @@ export async function POST(request: NextRequest) {
     selectedRestaurant,
     {
       createSmsSend: async (data) => {
-        await supabase.from('sms_sends').insert(data)
+        const { error } = await supabase.from('sms_sends').insert(data)
+        if (error) {
+          throw new Error(`Failed to create SMS send record: ${error.message}`)
+        }
       },
       updateBooking: async (id, data) => {
-        await supabase.from('bookings').update(data).eq('id', id)
+        const { error } = await supabase.from('bookings').update(data).eq('id', id)
+        if (error) {
+          throw new Error(`Failed to update booking ${id}: ${error.message}`)
+        }
       },
     },
     { smsType: effectiveSmsType }

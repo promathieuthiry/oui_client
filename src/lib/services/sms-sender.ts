@@ -98,8 +98,8 @@ export async function sendSMSToBookings(
     } else if (smsType === 'relance' && booking.relance_sent_at) {
       shouldSkip = true
       skipReason = 'Relance already sent'
-    } else if (!smsType && booking.sms_sent_at) {
-      // Fallback for backward compatibility
+    } else if (!smsType && (booking.sms_sent_at || booking.reminder_sent_at || booking.relance_sent_at)) {
+      // Fallback for backward compatibility - skip if ANY SMS has been sent
       shouldSkip = true
       skipReason = 'Already sent'
     }
@@ -114,8 +114,17 @@ export async function sendSMSToBookings(
       continue
     }
 
+    // Select correct template based on SMS type
+    let selectedTemplate = restaurant.sms_template
+    if (smsType === 'rappel_jj') {
+      selectedTemplate = restaurant.sms_template_jj
+    } else if (smsType === 'relance') {
+      selectedTemplate = restaurant.sms_template_relance
+    }
+    // rappel_j1 and backward-compat (no smsType) use default sms_template
+
     const message = formatTemplate(
-      restaurant.sms_template,
+      selectedTemplate,
       booking,
       restaurant
     )
