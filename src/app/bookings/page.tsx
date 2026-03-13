@@ -8,6 +8,7 @@ import { BookingsTable } from '@/components/bookings-table'
 import { SendConfirmation } from '@/components/send-confirmation'
 import { RecapPreview } from '@/components/recap-preview'
 import { AddBookingForm } from '@/components/add-booking-form'
+import { CSVImportModal } from '@/components/csv-import-modal'
 import type { Service } from '@/lib/constants'
 
 interface Booking {
@@ -48,6 +49,7 @@ export default function BookingsPage() {
   const [restaurantEmail, setRestaurantEmail] = useState<string>('')
   const [showSendDialog, setShowSendDialog] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -177,12 +179,12 @@ export default function BookingsPage() {
           >
             Ajouter une réservation
           </button>
-          <a
-            href="/bookings/import"
+          <button
+            onClick={() => setShowImportModal(true)}
             className="bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 text-sm font-medium"
           >
             Importer CSV
-          </a>
+          </button>
           {selectedIds.size > 0 && (
             <button
               onClick={handleDelete}
@@ -259,6 +261,19 @@ export default function BookingsPage() {
             refreshBookings()
           }}
           onCancel={() => setShowAddForm(false)}
+        />
+      )}
+
+      {restaurantId && (
+        <CSVImportModal
+          open={showImportModal}
+          restaurantId={restaurantId}
+          selectedDate={selectedDate}
+          onImportComplete={() => {
+            setShowImportModal(false)
+            refreshBookings()
+          }}
+          onCancel={() => setShowImportModal(false)}
         />
       )}
 
