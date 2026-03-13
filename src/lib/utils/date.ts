@@ -77,3 +77,10 @@ export function determineMessageType(
   // Fallback: J-1 (for bookings in the future)
   return ''
 }
+
+/**
+ * Format an ISO date (YYYY-MM-DD) to French format (DD/MM/YYYY)
+ */
+export function formatDateFr(isoDate: string): string {
+  return isoDate.split('-').reverse().join('/')
+}

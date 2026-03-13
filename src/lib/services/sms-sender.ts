@@ -1,5 +1,6 @@
 import { sendSMS } from '@/lib/services/octopush'
-import { maskPhone, formatDateFr } from '@/lib/utils/phone'
+import { maskPhone } from '@/lib/utils/phone'
+import { formatDateFr } from '@/lib/utils/date'
 import type { Service } from '@/lib/constants'
 
 interface Booking {

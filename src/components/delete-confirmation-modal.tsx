@@ -14,6 +14,7 @@ interface DeleteConfirmationModalProps {
   onConfirm: () => void
   onCancel: () => void
   isDeleting: boolean
+  error?: string | null
 }
 
 export function DeleteConfirmationModal({
@@ -21,6 +22,7 @@ export function DeleteConfirmationModal({
   onConfirm,
   onCancel,
   isDeleting,
+  error,
 }: DeleteConfirmationModalProps) {
   return (
     <Dialog.Root open={true} onOpenChange={(open) => !open && onCancel()}>
@@ -40,6 +42,12 @@ export function DeleteConfirmationModal({
               </p>
             </div>
           </Dialog.Description>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
           <div className="flex space-x-3 justify-end">
             <button

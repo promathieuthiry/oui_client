@@ -66,10 +66,3 @@ export function maskPhone(phone: string): string {
 
   return `${countryCode} ${firstDigit} XX XX XX ${lastTwo}`
 }
-
-/**
- * Format an ISO date (YYYY-MM-DD) to French format (DD/MM/YYYY)
- */
-export function formatDateFr(isoDate: string): string {
-  return isoDate.split('-').reverse().join('/')
-}
