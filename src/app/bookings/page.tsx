@@ -59,6 +59,7 @@ export default function BookingsPage() {
   const [deletingSingleIds, setDeletingSingleIds] = useState<Set<string>>(new Set())
   const [singleBookingToSend, setSingleBookingToSend] = useState<Booking | null>(null)
   const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [bookingToEdit, setBookingToEdit] = useState<Booking | null>(null)
   const supabase = createClient()
 
@@ -147,6 +148,7 @@ export default function BookingsPage() {
   function handleDeleteClick(bookingId: string) {
     const booking = bookings.find((b) => b.id === bookingId)
     if (!booking) return
+    setDeleteError(null) // Clear any previous error
     setBookingToDelete(booking)
   }
 
@@ -159,6 +161,7 @@ export default function BookingsPage() {
   async function confirmDelete() {
     if (!bookingToDelete) return
 
+    setDeleteError(null) // Clear any previous error
     setDeletingSingleIds((prev) => new Set(prev).add(bookingToDelete.id))
 
     const { error: deleteError } = await supabase
@@ -166,19 +169,20 @@ export default function BookingsPage() {
       .delete()
       .eq('id', bookingToDelete.id)
 
-    if (deleteError) {
-      console.error('Failed to delete booking:', deleteError)
-    } else {
-      mutate() // Trigger SWR refetch
-    }
-
     setDeletingSingleIds((prev) => {
       const next = new Set(prev)
       next.delete(bookingToDelete.id)
       return next
     })
 
-    setBookingToDelete(null)
+    if (deleteError) {
+      console.error('Failed to delete booking:', deleteError)
+      setDeleteError('Impossible de supprimer la réservation. Veuillez réessayer.')
+      // Keep modal open to show error
+    } else {
+      mutate() // Trigger SWR refetch
+      setBookingToDelete(null) // Close modal only on success
+    }
   }
 
   // Apply status filter
@@ -190,7 +194,9 @@ export default function BookingsPage() {
     (b) => b.status === 'pending' && !b.sms_sent_at
   )
 
-  const bookingsToSend = filteredBookings.filter(
+  // Use raw bookings (not filteredBookings) to find selected pending bookings
+  // This ensures SMS sending works correctly even when status filter is active
+  const bookingsToSend = bookings.filter(
     (b) => b.status === 'pending' && !b.sms_sent_at && selectedIds.has(b.id)
   )
 
@@ -294,6 +300,7 @@ export default function BookingsPage() {
           onConfirm={confirmDelete}
           onCancel={() => setBookingToDelete(null)}
           isDeleting={deletingSingleIds.has(bookingToDelete.id)}
+          error={deleteError}
         />
       )}
 
