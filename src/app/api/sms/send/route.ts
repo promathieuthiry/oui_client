@@ -9,7 +9,7 @@ const bodySchema = z.object({
   template_type: z.enum(['jj', 'relance']).optional(), // Backward compatibility
   sms_type: z.enum(['rappel_j1', 'rappel_jj', 'relance']).optional(),
   booking_ids: z.array(z.string().uuid()).optional(),
-  custom_message: z.string().optional(),
+  custom_message: z.string().max(612).optional(), // ~4 SMS segments (160 chars each)
 })
 
 export async function POST(request: NextRequest) {

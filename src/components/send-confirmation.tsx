@@ -245,12 +245,18 @@ export function SendConfirmation({
             <textarea
               value={customMessage}
               onChange={(e) => setCustomMessage(e.target.value)}
+              maxLength={612}
               className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md text-sm font-mono"
               placeholder="Sélectionnez un modèle ci-dessus..."
             />
-            <p className="text-xs text-gray-500">
-              Placeholders disponibles : {'{restaurant}'}, {'{nom}'}, {'{date}'}, {'{heure}'}, {'{couverts}'}
-            </p>
+            <div className="flex justify-between items-center text-xs">
+              <p className="text-gray-500">
+                Placeholders : {'{restaurant}'}, {'{nom}'}, {'{date}'}, {'{heure}'}, {'{couverts}'}
+              </p>
+              <p className={`font-mono ${customMessage.length > 612 ? 'text-red-600' : customMessage.length > 480 ? 'text-orange-600' : 'text-gray-500'}`}>
+                {customMessage.length}/612 caractères ({Math.ceil(customMessage.length / 160)} SMS)
+              </p>
+            </div>
           </div>
 
           {customMessage && (
