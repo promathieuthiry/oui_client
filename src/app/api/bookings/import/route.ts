@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { importCSV } from '@/lib/services/csv-import'
 import { isEditionFormat, convertEditionCSV } from '@/lib/services/edition-csv-converter'
+import Papa from 'papaparse'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -73,52 +74,76 @@ export async function POST(request: NextRequest) {
 
   // Server-side date validation (safety net for all formats)
   if (expectedDate) {
-    const lines = processedCsv.split('\n').filter((l) => l.trim())
-    if (lines.length >= 2) {
-      const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''))
+    // Use PapaParse to properly handle quoted CSV values
+    const parsed = Papa.parse<Record<string, string>>(processedCsv, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim(),
+    })
 
-      let dateColumnIndex = -1
-      if (effectiveMapping) {
-        const dateColumn = Object.entries(effectiveMapping).find(([, v]) => v === 'booking_date')?.[0]
-        if (dateColumn) dateColumnIndex = headers.indexOf(dateColumn)
-      } else {
-        dateColumnIndex = headers.findIndex((h) => h.toLowerCase() === 'booking_date')
-      }
+    if (parsed.data.length === 0) {
+      return NextResponse.json({
+        imported: 0,
+        updated: 0,
+        errors: [{
+          row: 0,
+          field: 'csv',
+          message: 'Aucune réservation trouvée dans le fichier'
+        }]
+      })
+    }
 
-      if (dateColumnIndex === -1) {
-        return NextResponse.json({
-          imported: 0,
-          updated: 0,
-          errors: [{
-            row: 0,
-            field: 'booking_date',
-            message: "La colonne 'booking_date' est introuvable dans le fichier CSV"
-          }]
-        })
+    // Determine the date column name
+    let dateColumnName = 'booking_date'
+    if (effectiveMapping) {
+      const mappedDateColumn = Object.entries(effectiveMapping).find(([, v]) => v === 'booking_date')?.[0]
+      if (mappedDateColumn) {
+        dateColumnName = mappedDateColumn
       }
+    }
 
-      // Check all data rows for mismatched dates
-      const mismatchedDates = new Set<string>()
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map((v) => v.trim().replace(/^"|"$/g, ''))
-        const dateValue = values[dateColumnIndex]
-        if (dateValue && dateValue !== expectedDate) {
-          mismatchedDates.add(dateValue)
-        }
-      }
+    // Check if the date column exists
+    const firstRow = parsed.data[0]
+    if (!(dateColumnName in firstRow) && !Object.keys(firstRow).some(k => k.toLowerCase() === 'booking_date')) {
+      return NextResponse.json({
+        imported: 0,
+        updated: 0,
+        errors: [{
+          row: 0,
+          field: 'booking_date',
+          message: "La colonne 'booking_date' est introuvable dans le fichier CSV"
+        }]
+      })
+    }
 
-      if (mismatchedDates.size > 0) {
-        const dates = Array.from(mismatchedDates).join(', ')
-        return NextResponse.json({
-          imported: 0,
-          updated: 0,
-          errors: [{
-            row: 0,
-            field: 'booking_date',
-            message: `Le fichier contient des réservations pour d'autres dates que ${expectedDate}. Dates trouvées : ${dates}`
-          }]
-        })
+    // Find actual column name (case-insensitive fallback)
+    const actualDateColumn = dateColumnName in firstRow
+      ? dateColumnName
+      : Object.keys(firstRow).find(k => k.toLowerCase() === 'booking_date') || dateColumnName
+
+    // Check all data rows for mismatched dates
+    const mismatchedDates = new Set<string>()
+    for (const row of parsed.data) {
+      const dateValue = effectiveMapping
+        ? row[actualDateColumn]
+        : (row[actualDateColumn] || row['booking_date'])
+
+      if (dateValue && dateValue !== expectedDate) {
+        mismatchedDates.add(dateValue)
       }
+    }
+
+    if (mismatchedDates.size > 0) {
+      const dates = Array.from(mismatchedDates).join(', ')
+      return NextResponse.json({
+        imported: 0,
+        updated: 0,
+        errors: [{
+          row: 0,
+          field: 'booking_date',
+          message: `Le fichier contient des réservations pour d'autres dates que ${expectedDate}. Dates trouvées : ${dates}`
+        }]
+      })
     }
   }
 
