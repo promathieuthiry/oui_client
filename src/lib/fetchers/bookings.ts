@@ -8,11 +8,19 @@ export async function fetchBookings(params: {
 
   const { data, error } = await supabase
     .from('bookings')
-    .select('*')
+    .select(`
+      *,
+      reply_count:sms_replies(count)
+    `)
     .eq('restaurant_id', params.restaurantId)
     .eq('booking_date', params.selectedDate)
     .order('booking_time', { ascending: true })
 
   if (error) throw error
-  return data || []
+
+  // Transform the reply_count from array to number
+  return (data || []).map((booking) => ({
+    ...booking,
+    reply_count: booking.reply_count?.[0]?.count ?? 0,
+  }))
 }
