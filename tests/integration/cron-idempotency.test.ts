@@ -22,6 +22,7 @@ describe('Cron Idempotency', () => {
         party_size: 4,
         status: 'pending',
         sms_sent_at: '2026-03-08T16:00:00Z', // already sent
+        service: 'soir',
       },
       {
         id: 'b2',
@@ -32,6 +33,7 @@ describe('Cron Idempotency', () => {
         party_size: 2,
         status: 'pending',
         sms_sent_at: null, // not yet sent
+        service: 'soir',
       },
     ]
 
@@ -67,6 +69,7 @@ describe('Cron Idempotency', () => {
         party_size: 4,
         status: 'pending',
         sms_sent_at: '2026-03-08T16:00:00Z',
+        service: 'soir',
       },
     ]
 

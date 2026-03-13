@@ -1,5 +1,6 @@
 import { sendSMS } from '@/lib/services/octopush'
 import { maskPhone } from '@/lib/utils/phone'
+import type { Service } from '@/lib/constants'
 
 interface Booking {
   id: string
@@ -10,6 +11,7 @@ interface Booking {
   party_size: number
   status: string
   sms_sent_at: string | null
+  service: Service
 }
 
 interface Restaurant {

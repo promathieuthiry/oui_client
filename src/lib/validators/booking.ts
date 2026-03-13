@@ -36,6 +36,7 @@ export const bookingRowSchema = z.object({
     .pipe(
       z.number().int().positive('Le nombre de couverts doit être supérieur à 0')
     ),
+  service: z.enum(['midi', 'soir']).optional(), // Trigger assigns automatically
 })
 
 export type BookingRow = z.infer<typeof bookingRowSchema>

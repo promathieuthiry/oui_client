@@ -20,6 +20,7 @@ describe('sendSMSToBookings', () => {
     party_size: 4,
     status: 'pending',
     sms_sent_at: null,
+    service: 'soir',
     ...overrides,
   })
 

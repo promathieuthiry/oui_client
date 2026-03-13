@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     // Get bookings for today
     const { data: bookings } = await supabase
       .from('bookings')
-      .select('id, guest_name, booking_time, party_size, status')
+      .select('id, guest_name, booking_time, party_size, status, service')
       .eq('restaurant_id', restaurantId)
       .eq('booking_date', today)
       .order('booking_time', { ascending: true })

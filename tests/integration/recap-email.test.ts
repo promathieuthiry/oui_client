@@ -40,6 +40,7 @@ describe('sendRecapEmail', () => {
       booking_time: '19:00',
       party_size: 4,
       status: 'confirmed',
+      service: 'soir',
     },
     {
       id: 'b2',
@@ -47,6 +48,7 @@ describe('sendRecapEmail', () => {
       booking_time: '20:00',
       party_size: 2,
       status: 'cancelled',
+      service: 'soir',
     },
     {
       id: 'b3',
@@ -54,6 +56,7 @@ describe('sendRecapEmail', () => {
       booking_time: '20:30',
       party_size: 6,
       status: 'pending',
+      service: 'soir',
     },
   ]
 

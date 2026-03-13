@@ -8,6 +8,7 @@ import { BookingsTable } from '@/components/bookings-table'
 import { SendConfirmation } from '@/components/send-confirmation'
 import { RecapPreview } from '@/components/recap-preview'
 import { AddBookingForm } from '@/components/add-booking-form'
+import type { Service } from '@/lib/constants'
 
 interface Booking {
   id: string
@@ -18,6 +19,7 @@ interface Booking {
   party_size: number
   status: string
   sms_sent_at: string | null
+  service: Service
 }
 
 interface StatCardProps {
@@ -69,11 +71,18 @@ export default function BookingsPage() {
 
       setRestaurantId(activeId)
 
-      const { data: restaurant } = await supabase
+      const { data: restaurant, error: restaurantError } = await supabase
         .from('restaurants')
         .select('name, email')
         .eq('id', activeId)
         .single()
+
+      if (restaurantError) {
+        console.error('Failed to load restaurant:', restaurantError)
+        setError('Impossible de charger les informations du restaurant')
+        setLoading(false)
+        return
+      }
 
       if (restaurant) {
         setRestaurantName(restaurant.name)
@@ -119,16 +128,23 @@ export default function BookingsPage() {
   async function handleDelete() {
     if (selectedIds.size === 0) return
     setDeleting(true)
+    setError(null) // Clear previous errors
 
     const { error } = await supabase
       .from('bookings')
       .delete()
       .in('id', Array.from(selectedIds))
 
-    if (!error) {
-      setSelectedIds(new Set())
-      refreshBookings()
+    if (error) {
+      console.error('Failed to delete bookings:', error)
+      setError(`Impossible de supprimer les réservations: ${error.message}`)
+      setDeleting(false)
+      return
     }
+
+    // Success path
+    setSelectedIds(new Set())
+    refreshBookings()
     setDeleting(false)
   }
 

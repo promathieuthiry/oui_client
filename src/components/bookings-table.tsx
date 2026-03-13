@@ -2,7 +2,7 @@
 
 import { StatusBadge } from '@/components/status-badge'
 import { formatPhone } from '@/lib/utils/phone'
-import { SOIR_CUTOFF } from '@/lib/constants'
+import type { Service } from '@/lib/constants'
 
 interface Booking {
   id: string
@@ -12,6 +12,7 @@ interface Booking {
   booking_time: string
   party_size: number
   status: string
+  service: Service
 }
 
 interface BookingsTableProps {
@@ -49,8 +50,8 @@ export function BookingsTable({ bookings, selectedIds, onSelectionChange }: Book
     onSelectionChange(next)
   }
 
-  const midi = bookings.filter((b) => b.booking_time < SOIR_CUTOFF)
-  const soir = bookings.filter((b) => b.booking_time >= SOIR_CUTOFF)
+  const midi = bookings.filter((b) => b.service === 'midi')
+  const soir = bookings.filter((b) => b.service === 'soir')
 
   function renderRows(rows: Booking[]) {
     return rows.map((booking) => (

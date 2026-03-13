@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { RecapEmail } from '@/emails/recap-email'
+import type { Service } from '@/lib/constants'
 
 interface Restaurant {
   id: string
@@ -13,6 +14,7 @@ interface RecapBooking {
   booking_time: string
   party_size: number
   status: string
+  service: Service
 }
 
 interface RecapResult {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { StatusBadge } from '@/components/status-badge'
-import { SOIR_CUTOFF } from '@/lib/constants'
+import type { Service } from '@/lib/constants'
 
 interface Booking {
   id: string
@@ -10,6 +10,7 @@ interface Booking {
   booking_time: string
   party_size: number
   status: string
+  service: Service
 }
 
 interface RecapPreviewProps {
@@ -169,8 +170,8 @@ export function RecapPreview({
   serviceDate,
   restaurantEmail,
 }: RecapPreviewProps) {
-  const midi = bookings.filter((b) => b.booking_time < SOIR_CUTOFF)
-  const soir = bookings.filter((b) => b.booking_time >= SOIR_CUTOFF)
+  const midi = bookings.filter((b) => b.service === 'midi')
+  const soir = bookings.filter((b) => b.service === 'soir')
 
   if (midi.length === 0 && soir.length === 0) {
     return null

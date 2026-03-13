@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendRecapEmail } from '@/lib/services/recap-email'
-import { SOIR_CUTOFF } from '@/lib/constants'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -44,7 +43,7 @@ export async function POST(request: NextRequest) {
   // Get all bookings for this date
   const { data: bookings, error: bookError } = await supabase
     .from('bookings')
-    .select('id, guest_name, booking_time, party_size, status')
+    .select('id, guest_name, booking_time, party_size, status, service')
     .eq('restaurant_id', restaurant_id)
     .eq('booking_date', service_date)
     .order('booking_time', { ascending: true })
@@ -59,10 +58,10 @@ export async function POST(request: NextRequest) {
   let filteredBookings = bookings || []
   let serviceLabel: string | undefined
   if (service === 'midi') {
-    filteredBookings = filteredBookings.filter((b) => b.booking_time < SOIR_CUTOFF)
+    filteredBookings = filteredBookings.filter((b) => b.service === 'midi')
     serviceLabel = 'Midi'
   } else if (service === 'soir') {
-    filteredBookings = filteredBookings.filter((b) => b.booking_time >= SOIR_CUTOFF)
+    filteredBookings = filteredBookings.filter((b) => b.service === 'soir')
     serviceLabel = 'Soir'
   }
 
@@ -72,7 +71,16 @@ export async function POST(request: NextRequest) {
     filteredBookings,
     {
       createRecap: async (data) => {
-        await supabase.from('recaps').insert(data)
+        const { error } = await supabase.from('recaps').insert(data)
+        if (error) {
+          console.error('Failed to record recap in database:', {
+            restaurant_id: data.restaurant_id,
+            service_date: data.service_date,
+            error: error.message,
+            code: error.code,
+          })
+          // Don't throw - we already sent the email, but log for monitoring
+        }
       },
     },
     serviceLabel
