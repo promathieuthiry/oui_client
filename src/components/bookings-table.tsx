@@ -29,9 +29,9 @@ interface Booking {
   party_size: number
   status: string
   service: Service
-  sms_sent_at?: string | null
-  reminder_sent_at?: string | null
-  relance_sent_at?: string | null
+  sms_sent_at: string | null
+  reminder_sent_at: string | null
+  relance_sent_at: string | null
   reply_count?: number
 }
 

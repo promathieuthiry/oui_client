@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { sendSMSToBookings } from '@/lib/services/sms-sender'
 import * as octopush from '@/lib/services/octopush'
+import type { Service } from '@/lib/constants'
 
 vi.mock('@/lib/services/octopush')
 
@@ -22,7 +23,9 @@ describe('Cron Idempotency', () => {
         party_size: 4,
         status: 'pending',
         sms_sent_at: '2026-03-08T16:00:00Z', // already sent
-        service: 'soir',
+        reminder_sent_at: null,
+        relance_sent_at: null,
+        service: 'soir' as Service,
       },
       {
         id: 'b2',
@@ -33,7 +36,9 @@ describe('Cron Idempotency', () => {
         party_size: 2,
         status: 'pending',
         sms_sent_at: null, // not yet sent
-        service: 'soir',
+        reminder_sent_at: null,
+        relance_sent_at: null,
+        service: 'soir' as Service,
       },
     ]
 
@@ -69,7 +74,9 @@ describe('Cron Idempotency', () => {
         party_size: 4,
         status: 'pending',
         sms_sent_at: '2026-03-08T16:00:00Z',
-        service: 'soir',
+        reminder_sent_at: null,
+        relance_sent_at: null,
+        service: 'soir' as Service,
       },
     ]
 

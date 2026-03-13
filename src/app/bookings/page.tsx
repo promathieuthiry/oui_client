@@ -13,6 +13,7 @@ import { AddBookingForm } from '@/components/add-booking-form'
 import { CSVImportModal } from '@/components/csv-import-modal'
 import { DeleteConfirmationModal } from '@/components/delete-confirmation-modal'
 import { EditBookingModal } from '@/components/edit-booking-modal'
+import { useRefreshTimer } from '@/hooks/useRefreshTimer'
 import type { Service } from '@/lib/constants'
 
 interface Booking {
@@ -24,6 +25,8 @@ interface Booking {
   party_size: number
   status: string
   sms_sent_at: string | null
+  reminder_sent_at: string | null
+  relance_sent_at: string | null
   service: Service
 }
 
@@ -78,12 +81,15 @@ export default function BookingsPage() {
     ([_, restaurantId, selectedDate]) =>
       fetchBookings({ restaurantId, selectedDate }),
     {
-      refreshInterval: 3000, // Poll every 3 seconds
+      refreshInterval: 60000, // Poll every 60 seconds
       revalidateOnFocus: true, // Refetch when tab gains focus
       revalidateOnReconnect: true, // Refetch on network reconnect
       dedupingInterval: 2000, // Deduplicate requests within 2s
     }
   )
+
+  // Countdown timer for next refresh
+  const secondsUntilRefresh = useRefreshTimer(60000)
 
   const error = swrError ? 'Impossible de charger les réservations.' : null
   const loading = isLoading
@@ -232,23 +238,51 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      <div>
-        <label
-          htmlFor="date"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Date
-        </label>
-        <input
-          id="date"
-          type="date"
-          value={selectedDate}
-          onChange={(e) => {
-            setSelectedDate(e.target.value)
-            setSelectedIds(new Set())
-          }}
-          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
+      <div className="flex items-end justify-between">
+        <div>
+          <label
+            htmlFor="date"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Date
+          </label>
+          <input
+            id="date"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              setSelectedDate(e.target.value)
+              setSelectedIds(new Set())
+            }}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => mutate()}
+            className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-3 rounded-md border border-gray-300 text-sm font-medium transition-colors"
+            title="Actualiser maintenant"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            <span>Actualiser</span>
+          </button>
+          <div className="text-sm text-gray-500">
+            Prochaine actualisation : <span className="font-medium text-gray-700">{secondsUntilRefresh}s</span>
+          </div>
+        </div>
       </div>
 
       {bookings.length > 0 && (

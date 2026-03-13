@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { formatPhone, formatDateFr } from '@/lib/utils/phone'
+import { formatPhone } from '@/lib/utils/phone'
+import { formatDateFr } from '@/lib/utils/date'
 import { getNextSmsAction } from '@/lib/utils/sms-flow'
 import { createClient } from '@/lib/supabase/client'
 
@@ -13,9 +14,9 @@ interface Booking {
   booking_date: string
   booking_time: string
   party_size: number
-  sms_sent_at?: string | null
-  reminder_sent_at?: string | null
-  relance_sent_at?: string | null
+  sms_sent_at: string | null
+  reminder_sent_at: string | null
+  relance_sent_at: string | null
   status: string
 }
 
