@@ -133,7 +133,7 @@ export function BookingsTable({
                     ? 'text-blue-600 focus:text-blue-600 focus:bg-blue-50'
                     : 'opacity-50 cursor-not-allowed'
                 )}
-                title={smsState.enabled ? undefined : smsState.reason}
+                title={smsState.enabled ? undefined : ('reason' in smsState ? smsState.reason : undefined)}
               >
                 <PaperAirplaneIcon className="h-4 w-4" />
                 <span>{smsButtonText}</span>
