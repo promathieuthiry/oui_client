@@ -3,6 +3,7 @@
 import { TrashIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import { StatusBadge } from '@/components/status-badge'
 import { formatPhone } from '@/lib/utils/phone'
+import { canSendRelance } from '@/lib/utils/date'
 import { cn } from '@/lib/utils'
 import type { Service } from '@/lib/constants'
 
@@ -57,8 +58,16 @@ export function BookingsTable({
   function shouldShowSendSms(booking: Booking): boolean {
     return (
       (booking.status === 'pending' && !booking.sms_sent_at) ||
-      booking.status === 'send_failed'
+      booking.status === 'send_failed' ||
+      canSendRelance(booking.sms_sent_at ?? null)
     )
+  }
+
+  function getSendButtonText(booking: Booking): string {
+    if (canSendRelance(booking.sms_sent_at ?? null)) {
+      return 'Envoyer Relance'
+    }
+    return 'Envoyer SMS'
   }
 
   function toggleAll() {
@@ -127,7 +136,7 @@ export function BookingsTable({
                 onClick={() => onSendSms(booking.id)}
                 className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                Envoyer SMS
+                {getSendButtonText(booking)}
               </button>
             )}
             {onDelete && (

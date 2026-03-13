@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect, useReducer } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { getActiveRestaurantId } from '@/lib/utils/active-restaurant'
+import { fetchBookings } from '@/lib/fetchers/bookings'
 import { BookingsTable } from '@/components/bookings-table'
 import { SendConfirmation } from '@/components/send-confirmation'
 import { RecapPreview } from '@/components/recap-preview'
@@ -41,7 +43,6 @@ function StatCard({ label, value, color }: StatCardProps) {
 
 export default function BookingsPage() {
   const searchParams = useSearchParams()
-  const [bookings, setBookings] = useState<Booking[]>([])
   const [selectedDate, setSelectedDate] = useState(
     searchParams.get('date') || new Date().toISOString().split('T')[0]
   )
@@ -53,25 +54,40 @@ export default function BookingsPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deleting, setDeleting] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [refreshKey, forceRefresh] = useReducer((c: number) => c + 1, 0)
   const [deletingSingleIds, setDeletingSingleIds] = useState<Set<string>>(new Set())
   const [singleBookingToSend, setSingleBookingToSend] = useState<Booking | null>(null)
   const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null)
   const supabase = createClient()
 
-  function refreshBookings() {
-    setError(null)
-    setLoading(true)
-    forceRefresh()
-  }
+  // SWR for automatic polling and data fetching
+  const swrKey = restaurantId && selectedDate
+    ? ['bookings', restaurantId, selectedDate]
+    : null
+
+  const {
+    data: bookings = [],
+    error: swrError,
+    isLoading,
+    mutate,
+  } = useSWR(
+    swrKey,
+    ([_, restaurantId, selectedDate]) =>
+      fetchBookings({ restaurantId, selectedDate }),
+    {
+      refreshInterval: 3000, // Poll every 3 seconds
+      revalidateOnFocus: true, // Refetch when tab gains focus
+      revalidateOnReconnect: true, // Refetch on network reconnect
+      dedupingInterval: 2000, // Deduplicate requests within 2s
+    }
+  )
+
+  const error = swrError ? 'Impossible de charger les réservations.' : null
+  const loading = isLoading
 
   useEffect(() => {
     async function loadRestaurant() {
       const activeId = getActiveRestaurantId()
       if (!activeId) {
-        setLoading(false)
         return
       }
 
@@ -85,8 +101,6 @@ export default function BookingsPage() {
 
       if (restaurantError) {
         console.error('Failed to load restaurant:', restaurantError)
-        setError('Impossible de charger les informations du restaurant')
-        setLoading(false)
         return
       }
 
@@ -99,58 +113,25 @@ export default function BookingsPage() {
     loadRestaurant()
   }, [supabase])
 
-  useEffect(() => {
-    if (!restaurantId) return
-    let cancelled = false
-
-    supabase
-      .from('bookings')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('booking_date', selectedDate)
-      .order('booking_time', { ascending: true })
-      .then(
-        ({ data, error: queryError }) => {
-          if (cancelled) return
-          if (queryError) {
-            console.error('Failed to load bookings:', queryError.message)
-            setError('Impossible de charger les réservations.')
-          } else {
-            setBookings(data || [])
-          }
-          setLoading(false)
-        },
-        (err) => {
-          if (cancelled) return
-          console.error('Network error loading bookings:', err)
-          setError('Erreur réseau. Vérifiez votre connexion.')
-          setLoading(false)
-        }
-      )
-
-    return () => { cancelled = true }
-  }, [restaurantId, selectedDate, refreshKey, supabase])
 
   async function handleDelete() {
     if (selectedIds.size === 0) return
     setDeleting(true)
-    setError(null) // Clear previous errors
 
-    const { error } = await supabase
+    const { error: deleteError } = await supabase
       .from('bookings')
       .delete()
       .in('id', Array.from(selectedIds))
 
-    if (error) {
-      console.error('Failed to delete bookings:', error)
-      setError(`Impossible de supprimer les réservations: ${error.message}`)
+    if (deleteError) {
+      console.error('Failed to delete bookings:', deleteError)
       setDeleting(false)
       return
     }
 
     // Success path
     setSelectedIds(new Set())
-    refreshBookings()
+    mutate() // Trigger SWR refetch
     setDeleting(false)
   }
 
@@ -170,18 +151,16 @@ export default function BookingsPage() {
     if (!bookingToDelete) return
 
     setDeletingSingleIds((prev) => new Set(prev).add(bookingToDelete.id))
-    setError(null)
 
-    const { error } = await supabase
+    const { error: deleteError } = await supabase
       .from('bookings')
       .delete()
       .eq('id', bookingToDelete.id)
 
-    if (error) {
-      console.error('Failed to delete booking:', error)
-      setError(`Impossible de supprimer la réservation: ${error.message}`)
+    if (deleteError) {
+      console.error('Failed to delete booking:', deleteError)
     } else {
-      refreshBookings()
+      mutate() // Trigger SWR refetch
     }
 
     setDeletingSingleIds((prev) => {
@@ -270,7 +249,7 @@ export default function BookingsPage() {
           bookingDate={selectedDate}
           onSendComplete={() => {
             setShowSendDialog(false)
-            refreshBookings()
+            mutate() // Trigger SWR refetch
           }}
           onCancel={() => setShowSendDialog(false)}
         />
@@ -283,7 +262,7 @@ export default function BookingsPage() {
           bookingDate={selectedDate}
           onSendComplete={() => {
             setSingleBookingToSend(null)
-            refreshBookings()
+            mutate() // Trigger SWR refetch
           }}
           onCancel={() => setSingleBookingToSend(null)}
         />
@@ -304,7 +283,7 @@ export default function BookingsPage() {
           bookingDate={selectedDate}
           onSuccess={() => {
             setShowAddForm(false)
-            refreshBookings()
+            mutate() // Trigger SWR refetch
           }}
           onCancel={() => setShowAddForm(false)}
         />
@@ -317,7 +296,7 @@ export default function BookingsPage() {
           selectedDate={selectedDate}
           onImportComplete={() => {
             setShowImportModal(false)
-            refreshBookings()
+            mutate() // Trigger SWR refetch
           }}
           onCancel={() => setShowImportModal(false)}
         />
