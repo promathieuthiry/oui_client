@@ -82,9 +82,13 @@ export function BookingsTable({
   const hasSelections = selectedIds.size > 0
 
   // Fetch SMS history for expanded booking
-  const { data: history, isLoading: isLoadingHistory } = useSWR<SmsHistory>(
+  const { data: history, isLoading: isLoadingHistory } = useSWR<
+    SmsHistory,
+    Error,
+    [string, string] | null
+  >(
     expandedId ? ['sms-history', expandedId] : null,
-    ([_key, id]) => fetchSmsHistory(id as string),
+    ([_key, id]) => fetchSmsHistory(id),
     { revalidateOnFocus: false }
   )
 
