@@ -78,7 +78,7 @@ export default function BookingsPage() {
     mutate,
   } = useSWR(
     swrKey,
-    ([_, restaurantId, selectedDate]) =>
+    ([_key, restaurantId, selectedDate]) =>
       fetchBookings({ restaurantId, selectedDate }),
     {
       refreshInterval: 60000, // Poll every 60 seconds

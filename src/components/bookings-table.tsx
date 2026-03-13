@@ -84,7 +84,7 @@ export function BookingsTable({
   // Fetch SMS history for expanded booking
   const { data: history, isLoading: isLoadingHistory } = useSWR<SmsHistory>(
     expandedId ? ['sms-history', expandedId] : null,
-    ([_, id]) => fetchSmsHistory(id as string),
+    ([_key, id]) => fetchSmsHistory(id as string),
     { revalidateOnFocus: false }
   )
 
