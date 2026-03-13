@@ -46,6 +46,7 @@ export default function BookingsPage() {
   const [selectedDate, setSelectedDate] = useState(
     searchParams.get('date') || new Date().toISOString().split('T')[0]
   )
+  const [selectedStatus, setSelectedStatus] = useState<string>('all')
   const [restaurantId, setRestaurantId] = useState<string | null>(null)
   const [restaurantName, setRestaurantName] = useState<string>('')
   const [restaurantEmail, setRestaurantEmail] = useState<string>('')
@@ -172,11 +173,18 @@ export default function BookingsPage() {
     setBookingToDelete(null)
   }
 
+  // Apply status filter
+  const filteredBookings = selectedStatus === 'all'
+    ? bookings
+    : bookings.filter((b) => b.status === selectedStatus)
+
   const pendingBookings = bookings.filter(
     (b) => b.status === 'pending' && !b.sms_sent_at
   )
 
-  const bookingsToSend = pendingBookings.filter((b) => selectedIds.has(b.id))
+  const bookingsToSend = filteredBookings.filter(
+    (b) => b.status === 'pending' && !b.sms_sent_at && selectedIds.has(b.id)
+  )
 
   const sentCount = bookings.filter((b) => b.status === 'sms_sent').length
   const deliveredCount = bookings.filter((b) => b.status === 'sms_delivered').length
@@ -231,7 +239,11 @@ export default function BookingsPage() {
 
       {bookings.length > 0 && (
         <div className="grid grid-cols-4 lg:grid-cols-8 gap-4">
-          <StatCard label="Total" value={bookings.length} color="text-gray-900" />
+          <StatCard
+            label={selectedStatus === 'all' ? 'Total' : 'Affichées'}
+            value={filteredBookings.length}
+            color="text-gray-900"
+          />
           <StatCard label="À envoyer" value={pendingBookings.length} color="text-gray-600" />
           <StatCard label="SMS envoyés" value={sentCount} color="text-blue-600" />
           <StatCard label="SMS reçus" value={deliveredCount} color="text-indigo-600" />
@@ -324,9 +336,11 @@ export default function BookingsPage() {
       ) : (
         <>
           <BookingsTable
-            bookings={bookings}
+            bookings={filteredBookings}
             selectedIds={selectedIds}
             onSelectionChange={setSelectedIds}
+            selectedStatus={selectedStatus}
+            onStatusChange={setSelectedStatus}
             onSendSms={handleSendSingle}
             onDelete={handleDeleteClick}
             deletingIds={deletingSingleIds}
