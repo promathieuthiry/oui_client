@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { TrashIcon, PaperAirplaneIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { TrashIcon, PaperAirplaneIcon, ChevronRightIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { StatusBadge } from '@/components/status-badge'
 import { formatPhone } from '@/lib/utils/phone'
 import { getNextSmsAction, getButtonText } from '@/lib/utils/sms-flow'
@@ -41,6 +41,7 @@ interface BookingsTableProps {
   onSelectionChange: (ids: Set<string>) => void
   selectedStatus?: string
   onStatusChange?: (status: string) => void
+  onEdit?: (bookingId: string) => void
   onSendSms?: (bookingId: string) => void
   onDelete?: (bookingId: string) => void
   deletingIds?: Set<string>
@@ -67,6 +68,7 @@ export function BookingsTable({
   onSelectionChange,
   selectedStatus = 'all',
   onStatusChange,
+  onEdit,
   onSendSms,
   onDelete,
   deletingIds,
@@ -213,6 +215,15 @@ export function BookingsTable({
           {/* Actions */}
           <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-end gap-2">
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(booking.id)}
+                  className="inline-flex items-center p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  aria-label="Modifier"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                </button>
+              )}
               {onSendSms && renderSmsButton(booking)}
               {onDelete && (
                 <button

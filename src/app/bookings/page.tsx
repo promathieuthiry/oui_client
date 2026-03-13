@@ -12,6 +12,7 @@ import { RecapPreview } from '@/components/recap-preview'
 import { AddBookingForm } from '@/components/add-booking-form'
 import { CSVImportModal } from '@/components/csv-import-modal'
 import { DeleteConfirmationModal } from '@/components/delete-confirmation-modal'
+import { EditBookingModal } from '@/components/edit-booking-modal'
 import type { Service } from '@/lib/constants'
 
 interface Booking {
@@ -58,6 +59,7 @@ export default function BookingsPage() {
   const [deletingSingleIds, setDeletingSingleIds] = useState<Set<string>>(new Set())
   const [singleBookingToSend, setSingleBookingToSend] = useState<Booking | null>(null)
   const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null)
+  const [bookingToEdit, setBookingToEdit] = useState<Booking | null>(null)
   const supabase = createClient()
 
   // SWR for automatic polling and data fetching
@@ -146,6 +148,12 @@ export default function BookingsPage() {
     const booking = bookings.find((b) => b.id === bookingId)
     if (!booking) return
     setBookingToDelete(booking)
+  }
+
+  function handleEditClick(bookingId: string) {
+    const booking = bookings.find((b) => b.id === bookingId)
+    if (!booking) return
+    setBookingToEdit(booking)
   }
 
   async function confirmDelete() {
@@ -289,6 +297,17 @@ export default function BookingsPage() {
         />
       )}
 
+      {bookingToEdit && (
+        <EditBookingModal
+          booking={bookingToEdit}
+          onSuccess={() => {
+            setBookingToEdit(null)
+            mutate() // Trigger SWR refetch
+          }}
+          onCancel={() => setBookingToEdit(null)}
+        />
+      )}
+
       {showAddForm && restaurantId && (
         <AddBookingForm
           restaurantId={restaurantId}
@@ -341,6 +360,7 @@ export default function BookingsPage() {
             onSelectionChange={setSelectedIds}
             selectedStatus={selectedStatus}
             onStatusChange={setSelectedStatus}
+            onEdit={handleEditClick}
             onSendSms={handleSendSingle}
             onDelete={handleDeleteClick}
             deletingIds={deletingSingleIds}
