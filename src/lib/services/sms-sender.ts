@@ -75,6 +75,7 @@ export function formatTemplate(
     .replace(/\{date\}/g, formatDateFr(booking.booking_date))
     .replace(/\{heure\}/g, booking.booking_time.slice(0, 5))
     .replace(/\{couverts\}/g, String(booking.party_size))
+    .replace(/\{personnes\}/g, booking.party_size === 1 ? 'personne' : 'personnes')
 }
 
 export async function sendSMSToBookings(
