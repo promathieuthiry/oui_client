@@ -1,18 +1,8 @@
 'use client'
 
-import { useState, useEffect, useReducer } from 'react'
-
-interface Restaurant {
-  id: string
-  name: string
-  email: string
-  sms_template: string
-  sms_template_jj: string
-  sms_template_relance: string
-  csv_mapping: Record<string, string> | null
-  sms_send_time: string
-  recap_send_time: string
-}
+import { useState } from 'react'
+import { useRestaurants } from '@/lib/hooks/use-restaurants'
+import { mutate } from 'swr'
 
 type FormData = {
   name: string
@@ -35,48 +25,13 @@ const emptyForm: FormData = {
 }
 
 export default function RestaurantsPage() {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
-  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { restaurants, activeRestaurantId, isLoading } = useRestaurants()
   const [formMode, setFormMode] = useState<'hidden' | 'create' | 'edit'>('hidden')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<FormData>(emptyForm)
   const [saving, setSaving] = useState(false)
   const [switching, setSwitching] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  const [refreshKey, forceRefresh] = useReducer((c: number) => c + 1, 0)
-
-  function refreshRestaurants() {
-    setLoading(true)
-    forceRefresh()
-  }
-
-  useEffect(() => {
-    let cancelled = false
-
-    fetch('/api/restaurants')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setRestaurants(data.restaurants)
-          setActiveRestaurantId(data.activeRestaurantId)
-          setLoading(false)
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error('Failed to load restaurants:', err)
-          setMessage({ type: 'error', text: 'Impossible de charger les restaurants.' })
-          setLoading(false)
-        }
-      })
-
-    return () => { cancelled = true }
-  }, [refreshKey])
 
   function openCreateForm() {
     const first = restaurants[0]
@@ -94,7 +49,10 @@ export default function RestaurantsPage() {
     setMessage(null)
   }
 
-  function openEditForm(r: Restaurant) {
+  function openEditForm(restaurantId: string) {
+    const r = restaurants.find((rest) => rest.id === restaurantId)
+    if (!r) return
+
     setForm({
       name: r.name,
       email: r.email,
@@ -133,7 +91,7 @@ export default function RestaurantsPage() {
       if (res.ok) {
         setMessage({ type: 'success', text: 'Restaurant créé avec succès.' })
         closeForm()
-        refreshRestaurants()
+        await mutate('/api/restaurants')
       } else {
         setMessage({ type: 'error', text: 'Erreur lors de la création.' })
       }
@@ -146,7 +104,7 @@ export default function RestaurantsPage() {
       if (res.ok) {
         setMessage({ type: 'success', text: 'Restaurant mis à jour avec succès.' })
         closeForm()
-        refreshRestaurants()
+        await mutate('/api/restaurants')
       } else {
         setMessage({ type: 'error', text: 'Erreur lors de la mise à jour.' })
       }
@@ -166,7 +124,7 @@ export default function RestaurantsPage() {
     })
 
     if (res.ok) {
-      setActiveRestaurantId(restaurantId)
+      await mutate('/api/restaurants')
       setMessage({ type: 'success', text: 'Restaurant actif changé.' })
     } else {
       setMessage({ type: 'error', text: 'Erreur lors du changement de restaurant.' })
@@ -179,7 +137,7 @@ export default function RestaurantsPage() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  if (loading) {
+  if (isLoading) {
     return <p className="text-gray-500">Chargement...</p>
   }
 
@@ -238,7 +196,7 @@ export default function RestaurantsPage() {
                 </button>
               )}
               <button
-                onClick={() => openEditForm(r)}
+                onClick={() => openEditForm(r.id)}
                 className="text-sm text-gray-600 hover:text-gray-800 font-medium"
               >
                 Modifier

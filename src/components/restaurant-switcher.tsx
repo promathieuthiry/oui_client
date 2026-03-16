@@ -1,30 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-
-interface Restaurant {
-  id: string
-  name: string
-}
+import { useRestaurants } from '@/lib/hooks/use-restaurants'
+import { mutate } from 'swr'
 
 export function RestaurantSwitcher() {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([])
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { restaurants, activeRestaurantId, isLoading } = useRestaurants()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    fetch('/api/restaurants')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) {
-          setRestaurants(data.restaurants)
-          setActiveId(data.activeRestaurantId)
-        }
-      })
-      .finally(() => setLoading(false))
-  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -44,20 +27,6 @@ export function RestaurantSwitcher() {
     }
   }, [open])
 
-  if (loading) {
-    return <div className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
-  }
-
-  if (restaurants.length === 0) return null
-
-  const active = restaurants.find((r) => r.id === activeId) ?? restaurants[0]
-
-  if (restaurants.length === 1) {
-    return (
-      <span className="text-sm font-medium text-gray-600">{active.name}</span>
-    )
-  }
-
   async function handleSwitch(restaurantId: string) {
     const res = await fetch('/api/restaurants/switch', {
       method: 'POST',
@@ -65,8 +34,23 @@ export function RestaurantSwitcher() {
       body: JSON.stringify({ restaurant_id: restaurantId }),
     })
     if (res.ok) {
-      window.location.reload()
+      await mutate('/api/restaurants')
+      setOpen(false)
     }
+  }
+
+  if (isLoading) {
+    return <div className="h-5 w-24 bg-gray-200 rounded animate-pulse" />
+  }
+
+  if (restaurants.length === 0) return null
+
+  const active = restaurants.find((r) => r.id === activeRestaurantId) ?? restaurants[0]
+
+  if (restaurants.length === 1) {
+    return (
+      <span className="text-sm font-medium text-gray-600">{active.name}</span>
+    )
   }
 
   return (
