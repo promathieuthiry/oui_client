@@ -55,34 +55,21 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // If custom_message provided, use it; otherwise fall back to template selection
-  let messageToSend: string
-
-  if (custom_message) {
-    messageToSend = custom_message
-  } else {
-    // Determine template based on SMS type
+  // Validate that the restaurant has a template configured (unless custom message is provided)
+  if (!custom_message) {
     let templateKey: 'sms_template' | 'sms_template_jj' | 'sms_template_relance' = 'sms_template'
-
     if (effectiveSmsType === 'rappel_jj') {
       templateKey = 'sms_template_jj'
     } else if (effectiveSmsType === 'relance') {
       templateKey = 'sms_template_relance'
     }
 
-    messageToSend = restaurant[templateKey]
-
-    if (!messageToSend) {
+    if (!restaurant[templateKey]) {
       return NextResponse.json(
         { error: 'Le modèle SMS sélectionné est vide. Configurez-le dans les paramètres du restaurant.' },
         { status: 400 }
       )
     }
-  }
-
-  const selectedRestaurant = {
-    ...restaurant,
-    sms_template: messageToSend,
   }
 
   // Get bookings for this date with query logic based on SMS type
@@ -141,7 +128,7 @@ export async function POST(request: NextRequest) {
 
   const result = await sendSMSToBookings(
     bookings,
-    selectedRestaurant,
+    restaurant,
     {
       createSmsSend: async (data) => {
         const { error } = await supabase.from('sms_sends').insert(data)
@@ -156,7 +143,7 @@ export async function POST(request: NextRequest) {
         }
       },
     },
-    { smsType: effectiveSmsType }
+    { smsType: effectiveSmsType, customMessage: custom_message }
   )
 
   return NextResponse.json(result)

@@ -61,6 +61,7 @@ interface DBCallbacks {
 
 interface SendOptions {
   smsType?: 'rappel_j1' | 'rappel_jj' | 'relance'
+  customMessage?: string
 }
 
 export function formatTemplate(
@@ -83,7 +84,7 @@ export async function sendSMSToBookings(
   options: SendOptions = {}
 ): Promise<SendResult> {
   const result: SendResult = { sent: 0, failed: 0, skipped: 0, details: [] }
-  const { smsType } = options
+  const { smsType, customMessage } = options
 
   for (const booking of bookings) {
     // Idempotency checks based on SMS type
@@ -115,14 +116,17 @@ export async function sendSMSToBookings(
       continue
     }
 
-    // Select correct template based on SMS type
-    let selectedTemplate = restaurant.sms_template
-    if (smsType === 'rappel_jj') {
+    // Use custom message if provided, otherwise select template based on SMS type
+    let selectedTemplate: string
+    if (customMessage) {
+      selectedTemplate = customMessage
+    } else if (smsType === 'rappel_jj') {
       selectedTemplate = restaurant.sms_template_jj
     } else if (smsType === 'relance') {
       selectedTemplate = restaurant.sms_template_relance
+    } else {
+      selectedTemplate = restaurant.sms_template
     }
-    // rappel_j1 and backward-compat (no smsType) use default sms_template
 
     const message = formatTemplate(
       selectedTemplate,
