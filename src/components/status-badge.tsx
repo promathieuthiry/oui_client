@@ -27,6 +27,10 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     label: 'Échec',
     className: 'bg-red-100 text-red-800',
   },
+  invalid_number: {
+    label: 'Numéro invalide',
+    className: 'bg-orange-100 text-orange-700',
+  },
 }
 
 export function StatusBadge({ status }: { status: string }) {

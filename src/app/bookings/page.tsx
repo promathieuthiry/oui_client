@@ -24,6 +24,7 @@ interface Booking {
   booking_time: string
   party_size: number
   status: string
+  error_reason?: string | null
   sms_sent_at: string | null
   reminder_sent_at: string | null
   relance_sent_at: string | null

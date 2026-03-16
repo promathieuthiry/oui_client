@@ -30,8 +30,13 @@ export function getNextSmsAction(booking: {
   relance_sent_at: string | null
   status: string
 }): SmsFlowState {
-  // If booking is confirmed, to_verify, or cancelled, no more SMS needed
-  if (booking.status === 'confirmed' || booking.status === 'to_verify' || booking.status === 'cancelled') {
+  // If booking is confirmed, to_verify, cancelled, or has invalid number, no more SMS needed
+  if (
+    booking.status === 'confirmed' ||
+    booking.status === 'to_verify' ||
+    booking.status === 'cancelled' ||
+    booking.status === 'invalid_number'
+  ) {
     return { type: 'completed', enabled: false }
   }
 

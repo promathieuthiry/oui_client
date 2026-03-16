@@ -26,6 +26,8 @@ interface DBCallbacks {
     booking_date: string
     booking_time: string
     party_size: number
+    status?: string
+    error_reason?: string | null
   }) => Promise<{ isNew: boolean }>
 }
 
@@ -74,17 +76,16 @@ export async function importCSV(
     const row = applyMapping(rawRow, mapping)
 
     // Convert phone to E.164 before validation
+    let phoneInvalid = false
+    let originalPhone = ''
     if (row.phone) {
       const e164 = toE164(row.phone)
       if (e164) {
         row.phone = e164
       } else {
-        result.errors.push({
-          row: rowNumber,
-          field: 'phone',
-          message: 'Format de téléphone invalide',
-        })
-        continue
+        phoneInvalid = true
+        originalPhone = row.phone
+        // Keep original phone — booking will be saved with invalid_number status
       }
     }
 
@@ -105,10 +106,13 @@ export async function importCSV(
       const { isNew } = await db.upsertBooking({
         restaurant_id: restaurantId,
         guest_name: validation.data.guest_name,
-        phone: validation.data.phone,
+        phone: phoneInvalid ? originalPhone : validation.data.phone,
         booking_date: validation.data.booking_date,
         booking_time: validation.data.booking_time,
         party_size: validation.data.party_size,
+        ...(phoneInvalid
+          ? { status: 'invalid_number', error_reason: `Format invalide: ${originalPhone}` }
+          : {}),
       })
 
       if (isNew) {
