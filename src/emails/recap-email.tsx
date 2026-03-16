@@ -8,7 +8,6 @@ import {
   Text,
   Heading,
   Preview,
-  Hr,
 } from '@react-email/components'
 import type { Service } from '@/lib/constants'
 
@@ -163,17 +162,6 @@ export function RecapEmail({
   const stats = calculateConfirmationStats(bookings)
   const grouped = groupBookingsByStatus(bookings)
 
-  // Determine badge color based on confirmation percentage
-  const getBadgeColor = (percentage: number) => {
-    if (percentage === 0) return '#6b7280' // Gray for 0%
-    if (percentage === 100) return '#059669' // Bright green for 100%
-    if (percentage >= 80) return '#10b981' // Green for 80%+
-    if (percentage >= 50) return '#f59e0b' // Amber for 50-79%
-    return '#ef4444' // Red for <50%
-  }
-
-  const badgeColor = getBadgeColor(stats.percentage)
-
   // Preview text for inbox
   const previewText =
     stats.total === 0
@@ -199,29 +187,6 @@ export function RecapEmail({
             maxWidth: '600px',
           }}
         >
-          {/* Header */}
-          <Heading
-            style={{
-              fontSize: '24px',
-              color: '#1a1a1a',
-              marginBottom: '8px',
-              marginTop: '0',
-            }}
-          >
-            Récapitulatif{serviceLabel ? ` ${serviceLabel}` : ''} —{' '}
-            {restaurantName}
-          </Heading>
-          <Text
-            style={{
-              fontSize: '14px',
-              color: '#666',
-              marginTop: '0',
-              marginBottom: '24px',
-            }}
-          >
-            Service{serviceLabel ? ` ${serviceLabel}` : ''} du {serviceDate}
-          </Text>
-
           {stats.total === 0 ? (
             /* No bookings case */
             <Section
@@ -244,56 +209,45 @@ export function RecapEmail({
             </Section>
           ) : (
             <>
-              {/* Confirmation Badge */}
-              <Section style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <div
-                  style={{
-                    backgroundColor: badgeColor,
-                    color: '#ffffff',
-                    borderRadius: '8px',
-                    padding: '16px 24px',
-                    display: 'inline-block',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: '48px',
-                      fontWeight: 'bold',
-                      margin: '0',
-                      lineHeight: '1',
-                    }}
-                  >
-                    {stats.percentage}%
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: '14px',
-                      margin: '8px 0 0 0',
-                      opacity: 0.9,
-                    }}
-                  >
-                    {stats.percentage === 0
-                      ? 'Aucune confirmation pour le moment'
-                      : 'des réservations ont confirmé'}
-                  </Text>
-                </div>
-              </Section>
+              {/* La situation */}
+              <Text
+                style={{
+                  fontSize: '14px',
+                  color: '#1a1a1a',
+                  marginTop: '0',
+                  marginBottom: '16px',
+                }}
+              >
+                Voici l&#39;état actuel des confirmations pour le service
+                {serviceLabel ? ` ${serviceLabel}` : ''} du {serviceDate}
+              </Text>
 
-              {/* Summary Statistics */}
+              {/* Les chiffres */}
+              <Text
+                style={{
+                  fontSize: '14px',
+                  color: '#1a1a1a',
+                  fontWeight: 'bold',
+                  marginBottom: '4px',
+                }}
+              >
+                {stats.confirmed} confirmée{stats.confirmed > 1 ? 's' : ''} -{' '}
+                {stats.cancelled} annulée{stats.cancelled > 1 ? 's' : ''} -{' '}
+                {stats.pending} en attente
+              </Text>
+
+              {/* Le pourcentage */}
               <Text
                 style={{
                   fontSize: '14px',
                   color: '#666',
-                  textAlign: 'center',
+                  marginTop: '0',
                   marginBottom: '32px',
                 }}
               >
-                {stats.confirmed} confirmée{stats.confirmed > 1 ? 's' : ''} •{' '}
-                {stats.cancelled} annulée{stats.cancelled > 1 ? 's' : ''} •{' '}
-                {stats.pending} en attente
+                {stats.percentage} % des réservations sont confirmées à ce
+                stade.
               </Text>
-
-              <Hr style={{ borderColor: '#e5e5e5', margin: '24px 0' }} />
 
               {/* Confirmed Bookings Section */}
               {grouped.confirmed.length > 0 && (
