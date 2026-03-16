@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { getActiveRestaurantId } from '@/lib/utils/active-restaurant'
+import { useRestaurants } from '@/lib/hooks/use-restaurants'
 import { fetchBookings } from '@/lib/fetchers/bookings'
 import { BookingsTable } from '@/components/bookings-table'
 import { SendConfirmation } from '@/components/send-confirmation'
@@ -51,9 +51,6 @@ export default function BookingsPage() {
     searchParams.get('date') || new Date().toISOString().split('T')[0]
   )
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [restaurantId, setRestaurantId] = useState<string | null>(null)
-  const [restaurantName, setRestaurantName] = useState<string>('')
-  const [restaurantEmail, setRestaurantEmail] = useState<string>('')
   const [showSendDialog, setShowSendDialog] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
@@ -65,6 +62,15 @@ export default function BookingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [bookingToEdit, setBookingToEdit] = useState<Booking | null>(null)
   const supabase = createClient()
+
+  // Use SWR hook for reactive restaurant data
+  const { restaurants, activeRestaurantId, isLoading: restaurantsLoading } = useRestaurants()
+
+  // Derive active restaurant details (follows rerender-derived-state-no-effect)
+  const activeRestaurant = restaurants.find(r => r.id === activeRestaurantId)
+  const restaurantId = activeRestaurantId
+  const restaurantName = activeRestaurant?.name ?? ''
+  const restaurantEmail = activeRestaurant?.email ?? ''
 
   // SWR for automatic polling and data fetching
   const swrKey = restaurantId && selectedDate
@@ -93,36 +99,6 @@ export default function BookingsPage() {
 
   const error = swrError ? 'Impossible de charger les réservations.' : null
   const loading = isLoading
-
-  useEffect(() => {
-    async function loadRestaurant() {
-      const activeId = getActiveRestaurantId()
-      if (!activeId) {
-        return
-      }
-
-      setRestaurantId(activeId)
-
-      const { data: restaurant, error: restaurantError } = await supabase
-        .from('restaurants')
-        .select('name, email')
-        .eq('id', activeId)
-        .single()
-
-      if (restaurantError) {
-        console.error('Failed to load restaurant:', restaurantError)
-        return
-      }
-
-      if (restaurant) {
-        setRestaurantName(restaurant.name)
-        setRestaurantEmail(restaurant.email ?? '')
-      }
-    }
-
-    loadRestaurant()
-  }, [supabase])
-
 
   async function handleDelete() {
     if (selectedIds.size === 0) return
@@ -383,18 +359,21 @@ export default function BookingsPage() {
         </div>
       )}
 
-      {!loading && !restaurantId && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <p className="text-amber-800">
-            Aucun restaurant sélectionné.{' '}
-            <a href="/restaurants" className="underline font-medium">
-              Choisir un restaurant
-            </a>
+      {restaurantsLoading ? (
+        <p className="text-gray-500">Chargement du restaurant...</p>
+      ) : !restaurantId ? (
+        <div className="text-center py-8">
+          <p className="text-gray-700 mb-4">
+            Aucun restaurant actif. Veuillez en sélectionner un.
           </p>
+          <a
+            href="/restaurants"
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            Aller aux restaurants
+          </a>
         </div>
-      )}
-
-      {loading ? (
+      ) : loading ? (
         <p className="text-gray-500">Chargement...</p>
       ) : (
         <>

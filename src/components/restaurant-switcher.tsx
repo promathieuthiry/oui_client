@@ -45,11 +45,11 @@ export function RestaurantSwitcher() {
 
   if (restaurants.length === 0) return null
 
-  const active = restaurants.find((r) => r.id === activeRestaurantId) ?? restaurants[0]
+  const active = restaurants.find((r) => r.id === activeRestaurantId)
 
   if (restaurants.length === 1) {
     return (
-      <span className="text-sm font-medium text-gray-600">{active.name}</span>
+      <span className="text-sm font-medium text-gray-600">{active?.name ?? restaurants[0].name}</span>
     )
   }
 
@@ -59,7 +59,7 @@ export function RestaurantSwitcher() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
       >
-        {active.name}
+        {active ? active.name : 'Sélectionner un restaurant'}
         <svg
           className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none"
@@ -77,12 +77,12 @@ export function RestaurantSwitcher() {
             <button
               key={r.id}
               onClick={() => {
-                if (r.id !== active.id) handleSwitch(r.id)
+                if (r.id !== active?.id) handleSwitch(r.id)
                 else setOpen(false)
               }}
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
-              {r.id === active.id ? (
+              {r.id === active?.id ? (
                 <svg className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
