@@ -154,7 +154,7 @@ function BookingTable({
 }
 
 export function RecapEmail({
-  restaurantName,
+  restaurantName: _restaurantName,
   serviceDate,
   bookings,
   serviceLabel,

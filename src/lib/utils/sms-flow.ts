@@ -1,6 +1,6 @@
 /**
  * Sequential SMS flow state management
- * Enforces strict progression: Rappel J-1 → Rappel Jour J → Relance
+ * Enforces strict progression: Rappel J-1 → Relance (or Rappel Jour J → Relance for same-day bookings)
  */
 
 import { isDateToday } from './date'
@@ -19,7 +19,7 @@ export type SmsFlowState =
  * 2. If no SMS sent:
  *    - If booking_date === today → rappel_jj (enabled) - skip J-1 for same-day bookings
  *    - Else → rappel_j1 (enabled)
- * 3. If J-1 sent, not Jour J → rappel_jj (enabled only if booking_date === today)
+ * 3. If J-1 sent → relance (enabled) - skip Jour J for bookings with J-1
  * 4. If Jour J sent, not Relance → relance (enabled)
  * 5. If all sent → completed (no button)
  */
@@ -50,17 +50,9 @@ export function getNextSmsAction(booking: {
     return { type: 'relance', enabled: true }
   }
 
-  // J-1 sent, waiting for Jour J
+  // J-1 sent → skip Jour J, go directly to Relance
   if (hasJ1) {
-    if (isBookingToday) {
-      return { type: 'rappel_jj', enabled: true }
-    } else {
-      return {
-        type: 'rappel_jj',
-        enabled: false,
-        reason: 'Disponible le jour de la réservation'
-      }
-    }
+    return { type: 'relance', enabled: true }
   }
 
   // No SMS sent yet
