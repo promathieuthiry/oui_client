@@ -92,9 +92,9 @@ export async function POST(request: NextRequest) {
       .is('reminder_sent_at', null)
       .in('status', ['pending', 'sms_sent', 'sms_delivered'])
   } else if (effectiveSmsType === 'relance') {
-    // Relance: get bookings with Jour J sent but not Relance
+    // Relance: get bookings with J-1 OR Jour J sent, but not yet relanced
     query = query
-      .not('reminder_sent_at', 'is', null)
+      .or('reminder_sent_at.not.is.null,sms_sent_at.not.is.null')
       .is('relance_sent_at', null)
       .in('status', ['sms_sent', 'sms_delivered'])
   } else {

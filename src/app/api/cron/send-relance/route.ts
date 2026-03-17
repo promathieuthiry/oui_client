@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { sendSMS } from '@/lib/services/octopush'
-import { formatTemplate } from '@/lib/services/sms-sender'
-import { maskPhone } from '@/lib/utils/phone'
+import { sendSMSToBookings } from '@/lib/services/sms-sender'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,12 +16,13 @@ export async function GET(request: NextRequest) {
 
   const today = new Date().toISOString().split('T')[0]
 
-  // Target today's bookings that got an SMS but never replied, and haven't been relanced yet
+  // Target today's bookings that got J-1 or Jour J SMS but never replied, and haven't been relanced yet
   const { data: bookings, error: bookError } = await supabase
     .from('bookings')
-    .select('id, phone, guest_name, booking_date, booking_time, party_size, restaurants!inner(id, name, sms_template_relance)')
+    .select('*, restaurants!inner(id, name, sms_template, sms_template_jj, sms_template_relance)')
     .eq('booking_date', today)
-    .eq('status', 'sms_sent')
+    .in('status', ['sms_sent', 'sms_delivered'])
+    .or('reminder_sent_at.not.is.null,sms_sent_at.not.is.null')
     .is('relance_sent_at', null)
 
   if (bookError) {
@@ -35,45 +34,51 @@ export async function GET(request: NextRequest) {
   }
 
   if (!bookings || bookings.length === 0) {
-    return NextResponse.json({ total_sent: 0, total_failed: 0 })
+    return NextResponse.json({
+      restaurants_processed: 0,
+      total_sent: 0,
+      total_failed: 0,
+      total_skipped: 0,
+    })
+  }
+
+  // Group by restaurant
+  const byRestaurant = new Map<
+    string,
+    { restaurant: { id: string; name: string; sms_template: string; sms_template_jj: string; sms_template_relance: string }; bookings: typeof bookings }
+  >()
+
+  for (const booking of bookings) {
+    const rest = booking.restaurants as unknown as { id: string; name: string; sms_template: string; sms_template_jj: string; sms_template_relance: string }
+    if (!byRestaurant.has(rest.id)) {
+      byRestaurant.set(rest.id, { restaurant: rest, bookings: [] })
+    }
+    byRestaurant.get(rest.id)!.bookings.push(booking)
   }
 
   let totalSent = 0
   let totalFailed = 0
+  let totalSkipped = 0
 
-  for (const booking of bookings) {
-    try {
-      const restaurant = booking.restaurants as unknown as {
-        id: string
-        name: string
-        sms_template_relance: string
-      }
-      const message = formatTemplate(restaurant.sms_template_relance, booking, restaurant)
+  for (const [, { restaurant, bookings: restBookings }] of byRestaurant) {
+    const result = await sendSMSToBookings(restBookings, restaurant, {
+      createSmsSend: async (data) => {
+        await supabase.from('sms_sends').insert(data)
+      },
+      updateBooking: async (id, data) => {
+        await supabase.from('bookings').update(data).eq('id', id)
+      },
+    }, { smsType: 'relance' })
 
-      const smsResult = await sendSMS(booking.phone, message)
-
-      if (smsResult.success) {
-        const { error } = await supabase
-          .from('bookings')
-          .update({ relance_sent_at: new Date().toISOString() })
-          .eq('id', booking.id)
-
-        if (error) {
-          console.error(`Failed to update booking ${booking.id}: ${error.message}`)
-          totalFailed++
-        } else {
-          totalSent++
-          console.log(`Relance SMS sent to ${maskPhone(booking.phone)} for booking ${booking.id}`)
-        }
-      } else {
-        totalFailed++
-        console.error(`Relance SMS failed for ${maskPhone(booking.phone)}: ${smsResult.error}`)
-      }
-    } catch (error) {
-      totalFailed++
-      console.error(`Error processing booking ${booking.id}:`, error)
-    }
+    totalSent += result.sent
+    totalFailed += result.failed
+    totalSkipped += result.skipped
   }
 
-  return NextResponse.json({ total_sent: totalSent, total_failed: totalFailed })
+  return NextResponse.json({
+    restaurants_processed: byRestaurant.size,
+    total_sent: totalSent,
+    total_failed: totalFailed,
+    total_skipped: totalSkipped,
+  })
 }
