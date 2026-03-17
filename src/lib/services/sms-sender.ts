@@ -135,56 +135,68 @@ export async function sendSMSToBookings(
       restaurant
     )
 
-    const smsResult = await sendSMS(booking.phone, message)
+    try {
+      const smsResult = await sendSMS(booking.phone, message)
 
-    const now = new Date().toISOString()
+      const now = new Date().toISOString()
 
-    await db.createSmsSend({
-      booking_id: booking.id,
-      octopush_ticket: smsResult.ticket || null,
-      status: smsResult.success ? 'sent' : 'failed',
-      attempts: 1,
-      last_attempt_at: now,
-      error_message: smsResult.error || null,
-    })
+      await db.createSmsSend({
+        booking_id: booking.id,
+        octopush_ticket: smsResult.ticket || null,
+        status: smsResult.success ? 'sent' : 'failed',
+        attempts: 1,
+        last_attempt_at: now,
+        error_message: smsResult.error || null,
+      })
 
-    if (smsResult.success) {
-      const updateData: {
-        sms_sent_at?: string
-        reminder_sent_at?: string
-        relance_sent_at?: string
-        status?: string
-      } = {
-        status: 'sms_sent'
+      if (smsResult.success) {
+        const updateData: {
+          sms_sent_at?: string
+          reminder_sent_at?: string
+          relance_sent_at?: string
+          status?: string
+        } = {
+          status: 'sms_sent'
+        }
+
+        // Update the correct timestamp field based on SMS type
+        if (smsType === 'rappel_j1' || !smsType) {
+          updateData.sms_sent_at = now
+        } else if (smsType === 'rappel_jj') {
+          updateData.reminder_sent_at = now
+        } else if (smsType === 'relance') {
+          updateData.relance_sent_at = now
+        }
+
+        await db.updateBooking(booking.id, updateData)
+        result.sent++
+        result.details.push({ booking_id: booking.id, status: 'sent' })
+
+        const smsTypeLabel = smsType ? `(${smsType}) ` : ''
+        console.log(
+          `SMS ${smsTypeLabel}sent to ${maskPhone(booking.phone)} for booking ${booking.id}\n→ ${message}`
+        )
+      } else {
+        await db.updateBooking(booking.id, { status: 'send_failed' })
+        result.failed++
+        result.details.push({
+          booking_id: booking.id,
+          status: 'failed',
+          error: smsResult.error,
+        })
+        console.error(
+          `SMS failed for ${maskPhone(booking.phone)}: ${smsResult.error}`
+        )
       }
-
-      // Update the correct timestamp field based on SMS type
-      if (smsType === 'rappel_j1' || !smsType) {
-        updateData.sms_sent_at = now
-      } else if (smsType === 'rappel_jj') {
-        updateData.reminder_sent_at = now
-      } else if (smsType === 'relance') {
-        updateData.relance_sent_at = now
-      }
-
-      await db.updateBooking(booking.id, updateData)
-      result.sent++
-      result.details.push({ booking_id: booking.id, status: 'sent' })
-
-      const smsTypeLabel = smsType ? `(${smsType}) ` : ''
-      console.log(
-        `SMS ${smsTypeLabel}sent to ${maskPhone(booking.phone)} for booking ${booking.id}\n→ ${message}`
-      )
-    } else {
-      await db.updateBooking(booking.id, { status: 'send_failed' })
+    } catch (error) {
       result.failed++
       result.details.push({
         booking_id: booking.id,
         status: 'failed',
-        error: smsResult.error,
+        error: error instanceof Error ? error.message : 'Unexpected error',
       })
       console.error(
-        `SMS failed for ${maskPhone(booking.phone)}: ${smsResult.error}`
+        `SMS processing error for booking ${booking.id} (${maskPhone(booking.phone)}):`, error
       )
     }
   }
