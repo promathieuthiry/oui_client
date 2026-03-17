@@ -44,6 +44,7 @@ export function RecapSendModal({
 
     setHtml(null)
     setError(null)
+    setCc([])
     setLoading(true)
 
     fetch('/api/recap/preview', {

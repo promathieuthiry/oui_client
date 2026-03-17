@@ -66,10 +66,16 @@ export async function GET(request: NextRequest) {
   for (const [, { restaurant, bookings: restBookings }] of byRestaurant) {
     const result = await sendSMSToBookings(restBookings, restaurant, {
       createSmsSend: async (data) => {
-        await supabase.from('sms_sends').insert(data)
+        const { error } = await supabase.from('sms_sends').insert(data)
+        if (error) {
+          console.error('Failed to create SMS send record:', { error: error.message, code: error.code })
+        }
       },
       updateBooking: async (id, data) => {
-        await supabase.from('bookings').update(data).eq('id', id)
+        const { error } = await supabase.from('bookings').update(data).eq('id', id)
+        if (error) {
+          console.error(`Failed to update booking ${id}:`, { error: error.message, code: error.code })
+        }
       },
     })
 
