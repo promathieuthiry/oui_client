@@ -55,34 +55,21 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // If custom_message provided, use it; otherwise fall back to template selection
-  let messageToSend: string
-
-  if (custom_message) {
-    messageToSend = custom_message
-  } else {
-    // Determine template based on SMS type
+  // Validate that the restaurant has a template configured (unless custom message is provided)
+  if (!custom_message) {
     let templateKey: 'sms_template' | 'sms_template_jj' | 'sms_template_relance' = 'sms_template'
-
     if (effectiveSmsType === 'rappel_jj') {
       templateKey = 'sms_template_jj'
     } else if (effectiveSmsType === 'relance') {
       templateKey = 'sms_template_relance'
     }
 
-    messageToSend = restaurant[templateKey]
-
-    if (!messageToSend) {
+    if (!restaurant[templateKey]) {
       return NextResponse.json(
         { error: 'Le modèle SMS sélectionné est vide. Configurez-le dans les paramètres du restaurant.' },
         { status: 400 }
       )
     }
-  }
-
-  const selectedRestaurant = {
-    ...restaurant,
-    sms_template: messageToSend,
   }
 
   // Get bookings for this date with query logic based on SMS type
@@ -105,9 +92,9 @@ export async function POST(request: NextRequest) {
       .is('reminder_sent_at', null)
       .in('status', ['pending', 'sms_sent', 'sms_delivered'])
   } else if (effectiveSmsType === 'relance') {
-    // Relance: get bookings with Jour J sent but not Relance
+    // Relance: get bookings with J-1 OR Jour J sent, but not yet relanced
     query = query
-      .not('reminder_sent_at', 'is', null)
+      .or('reminder_sent_at.not.is.null,sms_sent_at.not.is.null')
       .is('relance_sent_at', null)
       .in('status', ['sms_sent', 'sms_delivered'])
   } else {
@@ -141,7 +128,7 @@ export async function POST(request: NextRequest) {
 
   const result = await sendSMSToBookings(
     bookings,
-    selectedRestaurant,
+    restaurant,
     {
       createSmsSend: async (data) => {
         const { error } = await supabase.from('sms_sends').insert(data)
@@ -156,7 +143,7 @@ export async function POST(request: NextRequest) {
         }
       },
     },
-    { smsType: effectiveSmsType }
+    { smsType: effectiveSmsType, customMessage: custom_message }
   )
 
   return NextResponse.json(result)

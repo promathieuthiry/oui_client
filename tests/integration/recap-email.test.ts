@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { sendRecapEmail } from '@/lib/services/recap-email'
 
+// Capture send calls for assertion
+const mockSend = vi.fn().mockResolvedValue({
+  data: { id: 'email_123' },
+  error: null,
+})
+
 // Mock resend
 vi.mock('resend', () => {
   return {
     Resend: vi.fn().mockImplementation(() => ({
-      emails: {
-        send: vi.fn().mockResolvedValue({
-          data: { id: 'email_123' },
-          error: null,
-        }),
-      },
+      emails: { send: mockSend },
     })),
   }
 })
@@ -23,8 +24,10 @@ vi.mock('@/emails/recap-email', () => ({
 describe('sendRecapEmail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSend.mockResolvedValue({ data: { id: 'email_123' }, error: null })
     process.env.RESEND_API_KEY = 'test-key'
     process.env.RESEND_FROM_EMAIL = 'test@test.com'
+    delete process.env.RECAP_BCC_EMAIL
   })
 
   const restaurant = {
@@ -107,6 +110,102 @@ describe('sendRecapEmail', () => {
         email_status: 'sent',
       })
     )
+  })
+
+  it('should default to restaurant email when no emailOptions provided', async () => {
+    await sendRecapEmail(
+      restaurant,
+      '2026-03-09',
+      bookingsWithMixedStatuses,
+      { createRecap: vi.fn().mockResolvedValue(undefined) }
+    )
+
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: ['resto@example.com'],
+      })
+    )
+  })
+
+  it('should use custom TO recipients when provided', async () => {
+    await sendRecapEmail(
+      restaurant,
+      '2026-03-09',
+      bookingsWithMixedStatuses,
+      { createRecap: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      { to: ['custom@example.com', 'other@example.com'] }
+    )
+
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: ['custom@example.com', 'other@example.com'],
+      })
+    )
+  })
+
+  it('should include CC recipients when provided', async () => {
+    await sendRecapEmail(
+      restaurant,
+      '2026-03-09',
+      bookingsWithMixedStatuses,
+      { createRecap: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      { cc: ['cc@example.com'] }
+    )
+
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cc: ['cc@example.com'],
+      })
+    )
+  })
+
+  it('should include RECAP_BCC_EMAIL from env automatically', async () => {
+    process.env.RECAP_BCC_EMAIL = 'admin@ouiclient.com'
+
+    await sendRecapEmail(
+      restaurant,
+      '2026-03-09',
+      bookingsWithMixedStatuses,
+      { createRecap: vi.fn().mockResolvedValue(undefined) }
+    )
+
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bcc: ['admin@ouiclient.com'],
+      })
+    )
+  })
+
+  it('should dedupe BCC when env and emailOptions overlap', async () => {
+    process.env.RECAP_BCC_EMAIL = 'admin@ouiclient.com'
+
+    await sendRecapEmail(
+      restaurant,
+      '2026-03-09',
+      bookingsWithMixedStatuses,
+      { createRecap: vi.fn().mockResolvedValue(undefined) },
+      undefined,
+      { bcc: ['Admin@OuiClient.com', 'extra@example.com'] }
+    )
+
+    const call = mockSend.mock.calls[0][0]
+    expect(call.bcc).toHaveLength(2)
+    expect(call.bcc).toContain('admin@ouiclient.com')
+    expect(call.bcc).toContain('extra@example.com')
+  })
+
+  it('should not include bcc field when no env and no emailOptions bcc', async () => {
+    await sendRecapEmail(
+      restaurant,
+      '2026-03-09',
+      bookingsWithMixedStatuses,
+      { createRecap: vi.fn().mockResolvedValue(undefined) }
+    )
+
+    const call = mockSend.mock.calls[0][0]
+    expect(call.bcc).toBeUndefined()
   })
 })
 

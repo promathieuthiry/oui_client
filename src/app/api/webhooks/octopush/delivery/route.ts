@@ -127,9 +127,17 @@ export async function POST(request: NextRequest) {
     dlrStatus === 'BLACKLISTED_NUMBER' ||
     (dlrStatus === 'NOT_DELIVERED' && smsSend.attempts >= 3)
   ) {
-    console.log('[Webhook] Processing permanent failure - status:', dlrStatus, 'attempts:', smsSend.attempts)
+    // Distinguish phone errors from network errors
+    const isPhoneError =
+      dlrStatus === 'BAD_DESTINATION' ||
+      dlrStatus === 'BLACKLISTED_NUMBER'
 
-    // Permanent failure
+    const newStatus = isPhoneError ? 'invalid_number' : 'send_failed'
+    const errorReason = isPhoneError ? `Octopush: ${dlrStatus}` : null
+
+    console.log('[Webhook] Processing permanent failure - status:', dlrStatus, 'attempts:', smsSend.attempts, '→', newStatus)
+
+    // Update sms_send
     const { error: smsError } = await supabase
       .from('sms_sends')
       .update({
@@ -144,15 +152,20 @@ export async function POST(request: NextRequest) {
       console.log('[Webhook] SMS marked as permanently failed')
     }
 
+    // Update booking with appropriate status
     const { error: bookingError } = await supabase
       .from('bookings')
-      .update({ status: 'send_failed', updated_at: new Date().toISOString() })
+      .update({
+        status: newStatus,
+        error_reason: errorReason,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', smsSend.booking_id)
 
     if (bookingError) {
-      console.error('[Webhook] Failed to update booking to send_failed:', bookingError)
+      console.error(`[Webhook] Failed to update booking to ${newStatus}:`, bookingError)
     } else {
-      console.log('[Webhook] Booking marked as send_failed')
+      console.log(`[Webhook] Booking marked as ${newStatus}`)
     }
   } else {
     console.log('[Webhook] Processing unknown status:', dlrStatus, '- updating delivery_status only')

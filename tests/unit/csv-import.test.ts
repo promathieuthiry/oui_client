@@ -50,9 +50,37 @@ describe('importCSV', () => {
     const db = mockDb()
     const result = await importCSV(csv, 'rest-1', db)
 
+    // Invalid phone row is now saved with invalid_number status (not rejected)
+    // Past date and empty name/party_size rows still produce errors
     expect(result.errors.length).toBeGreaterThan(0)
-    // At least the invalid phone and past date should error
-    expect(result.errors.some((e) => e.field === 'phone')).toBe(true)
+    expect(result.errors.some((e) => e.field === 'booking_date')).toBe(true)
+
+    // The invalid phone row should be upserted with invalid_number status
+    expect(db.upsertBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone: 'invalid-phone',
+        status: 'invalid_number',
+        error_reason: 'Format invalide: invalid-phone',
+      })
+    )
+  })
+
+  it('should save bookings with invalid phone as invalid_number', async () => {
+    const csv = makeCSV([`Jean Dupont,123456,${tomorrow},19:00,2`])
+
+    const db = mockDb()
+    const result = await importCSV(csv, 'rest-1', db)
+
+    expect(result.imported).toBe(1)
+    expect(result.errors).toHaveLength(0)
+    expect(db.upsertBooking).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guest_name: 'Jean Dupont',
+        phone: '123456',
+        status: 'invalid_number',
+        error_reason: 'Format invalide: 123456',
+      })
+    )
   })
 
   it('should apply column mapping', async () => {

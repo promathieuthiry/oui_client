@@ -170,7 +170,11 @@ export async function POST(request: NextRequest) {
         return { isNew: false }
       }
 
-      await supabase.from('bookings').insert(data)
+      const { status, error_reason, ...bookingFields } = data
+      await supabase.from('bookings').insert({
+        ...bookingFields,
+        ...(status ? { status, error_reason } : {}),
+      })
       return { isNew: true }
     },
   }, effectiveMapping)

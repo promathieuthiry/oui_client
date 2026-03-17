@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { StatusBadge } from '@/components/status-badge'
+import { RecapSendModal } from '@/components/recap-send-modal'
 import type { Service } from '@/lib/constants'
 
 interface Booking {
@@ -17,61 +18,26 @@ interface RecapPreviewProps {
   bookings: Booking[]
   restaurantId: string
   serviceDate: string
-  restaurantEmail: string
 }
 
 function RecapSection({
   bookings,
   restaurantId,
   serviceDate,
-  restaurantEmail,
   service,
   label,
 }: {
   bookings: Booking[]
   restaurantId: string
   serviceDate: string
-  restaurantEmail: string
   service: 'midi' | 'soir'
   label: string
 }) {
-  const [sending, setSending] = useState(false)
+  const [showModal, setShowModal] = useState(false)
   const [result, setResult] = useState<{
     email_status: string
     booking_count: number
   } | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSend() {
-    setSending(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/recap/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          restaurant_id: restaurantId,
-          service_date: serviceDate,
-          service,
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.error || "Erreur lors de l'envoi du récapitulatif")
-      }
-
-      const data = await response.json()
-      setResult(data)
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Erreur lors de l'envoi"
-      )
-    } finally {
-      setSending(false)
-    }
-  }
 
   const confirmed = bookings.filter((b) => b.status === 'confirmed').length
 
@@ -86,27 +52,13 @@ function RecapSection({
             {confirmed}/{bookings.length} confirmée(s)
           </p>
         </div>
-        <div className="relative group">
-          <button
-            onClick={handleSend}
-            disabled={sending}
-            className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-          >
-            {sending ? 'Envoi...' : 'Envoyer le récapitulatif'}
-          </button>
-          {restaurantEmail && (
-            <div className="absolute right-0 top-full mt-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-              Envoi à {restaurantEmail}
-            </div>
-          )}
-        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 text-sm font-medium"
+        >
+          Envoyer le récapitulatif
+        </button>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-          {error}
-        </div>
-      )}
 
       {result && (
         <div
@@ -160,6 +112,16 @@ function RecapSection({
           </tbody>
         </table>
       </div>
+
+      <RecapSendModal
+        open={showModal}
+        onOpenChange={setShowModal}
+        restaurantId={restaurantId}
+        serviceDate={serviceDate}
+        service={service}
+        label={label}
+        onSent={setResult}
+      />
     </div>
   )
 }
@@ -168,7 +130,6 @@ export function RecapPreview({
   bookings,
   restaurantId,
   serviceDate,
-  restaurantEmail,
 }: RecapPreviewProps) {
   const midi = bookings.filter((b) => b.service === 'midi')
   const soir = bookings.filter((b) => b.service === 'soir')
@@ -185,7 +146,6 @@ export function RecapPreview({
           bookings={midi}
           restaurantId={restaurantId}
           serviceDate={serviceDate}
-          restaurantEmail={restaurantEmail}
           service="midi"
           label="Midi"
         />
@@ -195,7 +155,6 @@ export function RecapPreview({
           bookings={soir}
           restaurantId={restaurantId}
           serviceDate={serviceDate}
-          restaurantEmail={restaurantEmail}
           service="soir"
           label="Soir"
         />

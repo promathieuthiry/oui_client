@@ -28,6 +28,7 @@ interface Booking {
   booking_time: string
   party_size: number
   status: string
+  error_reason?: string | null
   service: Service
   sms_sent_at: string | null
   reminder_sent_at: string | null
@@ -60,6 +61,7 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'cancelled', label: 'Annulée' },
   { value: 'to_verify', label: 'À vérifier' },
   { value: 'send_failed', label: 'Échec' },
+  { value: 'invalid_number', label: 'Numéro invalide' },
 ]
 
 export function BookingsTable({
@@ -253,7 +255,14 @@ export function BookingsTable({
             {booking.party_size}
           </td>
           <td className="px-6 py-4 whitespace-nowrap">
-            <StatusBadge status={booking.status} />
+            <div className="flex items-center">
+              <StatusBadge status={booking.status} />
+              {booking.error_reason && (
+                <span className="ml-2 text-xs text-gray-500" title={booking.error_reason}>
+                  &#9432;
+                </span>
+              )}
+            </div>
           </td>
 
           {/* Actions */}

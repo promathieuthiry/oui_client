@@ -61,6 +61,7 @@ interface DBCallbacks {
 
 interface SendOptions {
   smsType?: 'rappel_j1' | 'rappel_jj' | 'relance'
+  customMessage?: string
 }
 
 export function formatTemplate(
@@ -74,6 +75,7 @@ export function formatTemplate(
     .replace(/\{date\}/g, formatDateFr(booking.booking_date))
     .replace(/\{heure\}/g, booking.booking_time.slice(0, 5))
     .replace(/\{couverts\}/g, String(booking.party_size))
+    .replace(/\{personnes\}/g, booking.party_size === 1 ? 'personne' : 'personnes')
 }
 
 export async function sendSMSToBookings(
@@ -83,7 +85,7 @@ export async function sendSMSToBookings(
   options: SendOptions = {}
 ): Promise<SendResult> {
   const result: SendResult = { sent: 0, failed: 0, skipped: 0, details: [] }
-  const { smsType } = options
+  const { smsType, customMessage } = options
 
   for (const booking of bookings) {
     // Idempotency checks based on SMS type
@@ -115,14 +117,17 @@ export async function sendSMSToBookings(
       continue
     }
 
-    // Select correct template based on SMS type
-    let selectedTemplate = restaurant.sms_template
-    if (smsType === 'rappel_jj') {
+    // Use custom message if provided, otherwise select template based on SMS type
+    let selectedTemplate: string
+    if (customMessage) {
+      selectedTemplate = customMessage
+    } else if (smsType === 'rappel_jj') {
       selectedTemplate = restaurant.sms_template_jj
     } else if (smsType === 'relance') {
       selectedTemplate = restaurant.sms_template_relance
+    } else {
+      selectedTemplate = restaurant.sms_template
     }
-    // rappel_j1 and backward-compat (no smsType) use default sms_template
 
     const message = formatTemplate(
       selectedTemplate,
@@ -130,56 +135,68 @@ export async function sendSMSToBookings(
       restaurant
     )
 
-    const smsResult = await sendSMS(booking.phone, message)
+    try {
+      const smsResult = await sendSMS(booking.phone, message)
 
-    const now = new Date().toISOString()
+      const now = new Date().toISOString()
 
-    await db.createSmsSend({
-      booking_id: booking.id,
-      octopush_ticket: smsResult.ticket || null,
-      status: smsResult.success ? 'sent' : 'failed',
-      attempts: 1,
-      last_attempt_at: now,
-      error_message: smsResult.error || null,
-    })
+      await db.createSmsSend({
+        booking_id: booking.id,
+        octopush_ticket: smsResult.ticket || null,
+        status: smsResult.success ? 'sent' : 'failed',
+        attempts: 1,
+        last_attempt_at: now,
+        error_message: smsResult.error || null,
+      })
 
-    if (smsResult.success) {
-      const updateData: {
-        sms_sent_at?: string
-        reminder_sent_at?: string
-        relance_sent_at?: string
-        status?: string
-      } = {
-        status: 'sms_sent'
+      if (smsResult.success) {
+        const updateData: {
+          sms_sent_at?: string
+          reminder_sent_at?: string
+          relance_sent_at?: string
+          status?: string
+        } = {
+          status: 'sms_sent'
+        }
+
+        // Update the correct timestamp field based on SMS type
+        if (smsType === 'rappel_j1' || !smsType) {
+          updateData.sms_sent_at = now
+        } else if (smsType === 'rappel_jj') {
+          updateData.reminder_sent_at = now
+        } else if (smsType === 'relance') {
+          updateData.relance_sent_at = now
+        }
+
+        await db.updateBooking(booking.id, updateData)
+        result.sent++
+        result.details.push({ booking_id: booking.id, status: 'sent' })
+
+        const smsTypeLabel = smsType ? `(${smsType}) ` : ''
+        console.log(
+          `SMS ${smsTypeLabel}sent to ${maskPhone(booking.phone)} for booking ${booking.id}\n→ ${message}`
+        )
+      } else {
+        await db.updateBooking(booking.id, { status: 'send_failed' })
+        result.failed++
+        result.details.push({
+          booking_id: booking.id,
+          status: 'failed',
+          error: smsResult.error,
+        })
+        console.error(
+          `SMS failed for ${maskPhone(booking.phone)}: ${smsResult.error}`
+        )
       }
-
-      // Update the correct timestamp field based on SMS type
-      if (smsType === 'rappel_j1' || !smsType) {
-        updateData.sms_sent_at = now
-      } else if (smsType === 'rappel_jj') {
-        updateData.reminder_sent_at = now
-      } else if (smsType === 'relance') {
-        updateData.relance_sent_at = now
-      }
-
-      await db.updateBooking(booking.id, updateData)
-      result.sent++
-      result.details.push({ booking_id: booking.id, status: 'sent' })
-
-      const smsTypeLabel = smsType ? `(${smsType}) ` : ''
-      console.log(
-        `SMS ${smsTypeLabel}sent to ${maskPhone(booking.phone)} for booking ${booking.id}\n→ ${message}`
-      )
-    } else {
-      await db.updateBooking(booking.id, { status: 'send_failed' })
+    } catch (error) {
       result.failed++
       result.details.push({
         booking_id: booking.id,
         status: 'failed',
-        error: smsResult.error,
+        error: error instanceof Error ? error.message : 'Unexpected error',
       })
       console.error(
-        `SMS failed for ${maskPhone(booking.phone)}: ${smsResult.error}`
+        `SMS processing error for booking ${booking.id} (${maskPhone(booking.phone)}):`, error
       )
     }
   }

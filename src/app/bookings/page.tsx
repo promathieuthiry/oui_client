@@ -24,6 +24,7 @@ interface Booking {
   booking_time: string
   party_size: number
   status: string
+  error_reason?: string | null
   sms_sent_at: string | null
   reminder_sent_at: string | null
   relance_sent_at: string | null
@@ -70,7 +71,6 @@ export default function BookingsPage() {
   const activeRestaurant = restaurants.find(r => r.id === activeRestaurantId)
   const restaurantId = activeRestaurantId
   const restaurantName = activeRestaurant?.name ?? ''
-  const restaurantEmail = activeRestaurant?.email ?? ''
 
   // SWR for automatic polling and data fetching
   const swrKey = restaurantId && selectedDate
@@ -398,7 +398,6 @@ export default function BookingsPage() {
               bookings={bookings}
               restaurantId={restaurantId}
               serviceDate={selectedDate}
-              restaurantEmail={restaurantEmail}
             />
           )}
         </>

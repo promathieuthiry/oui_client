@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
 import { RecapEmail } from '@/emails/recap-email'
 import type { Service } from '@/lib/constants'
+import { formatDateFr } from '@/lib/utils/date'
 
 interface Restaurant {
   id: string
@@ -36,22 +37,42 @@ interface DBCallbacks {
   }) => Promise<void>
 }
 
+export interface EmailOptions {
+  to?: string[]
+  cc?: string[]
+  bcc?: string[]
+}
+
+function buildBcc(extra?: string[]): string[] {
+  const envBcc = process.env.RECAP_BCC_EMAIL
+  const set = new Set<string>(extra?.map((e) => e.toLowerCase()) ?? [])
+  if (envBcc) set.add(envBcc.toLowerCase())
+  return [...set]
+}
+
 export async function sendRecapEmail(
   restaurant: Restaurant,
   serviceDate: string,
   bookings: RecapBooking[],
   db: DBCallbacks,
-  serviceLabel?: string
+  serviceLabel?: string,
+  emailOptions?: EmailOptions
 ): Promise<RecapResult> {
   const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const to = emailOptions?.to?.length ? emailOptions.to : [restaurant.email]
+  const cc = emailOptions?.cc?.length ? emailOptions.cc : undefined
+  const bcc = buildBcc(emailOptions?.bcc)
 
   try {
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'OuiClient <noreply@ouiclient.com>',
-      to: restaurant.email,
+      to,
+      ...(cc && { cc }),
+      ...(bcc.length > 0 && { bcc }),
       subject: serviceLabel
-        ? `Récapitulatif ${serviceLabel} réservations — ${restaurant.name} — ${serviceDate}`
-        : `Récapitulatif réservations — ${restaurant.name} — ${serviceDate}`,
+        ? `Récapitulatif ${serviceLabel} réservations — ${restaurant.name} — ${formatDateFr(serviceDate)}`
+        : `Récapitulatif réservations — ${restaurant.name} — ${formatDateFr(serviceDate)}`,
       react: RecapEmail({
         restaurantName: restaurant.name,
         serviceDate,
