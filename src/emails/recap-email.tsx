@@ -155,7 +155,7 @@ function BookingTable({
 }
 
 export function RecapEmail({
-  restaurantName: _restaurantName,
+  restaurantName,
   serviceDate,
   bookings,
   serviceLabel,
@@ -188,6 +188,29 @@ export function RecapEmail({
             maxWidth: '600px',
           }}
         >
+          {/* Header */}
+          <Heading
+            style={{
+              fontSize: '22px',
+              color: '#1a1a1a',
+              marginTop: '0',
+              marginBottom: '4px',
+            }}
+          >
+            {restaurantName}
+          </Heading>
+          <Text
+            style={{
+              fontSize: '14px',
+              color: '#666',
+              marginTop: '0',
+              marginBottom: '24px',
+            }}
+          >
+            Récapitulatif{serviceLabel ? ` ${serviceLabel}` : ''} du{' '}
+            {formatDateFr(serviceDate)}
+          </Text>
+
           {stats.total === 0 ? (
             /* No bookings case */
             <Section
