@@ -27,6 +27,7 @@ export async function sendSMS(
       type: "sms_premium",
       purpose: "alert",
       with_replies: true,
+      auto_optimize_text: false, // préserver les accents (ô, ê, etc.)
     };
 
     if (smsMode === "simu") {

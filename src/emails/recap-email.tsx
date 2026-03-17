@@ -10,6 +10,7 @@ import {
   Preview,
 } from '@react-email/components'
 import type { Service } from '@/lib/constants'
+import { formatDateFr } from '@/lib/utils/date'
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
@@ -219,7 +220,7 @@ export function RecapEmail({
                 }}
               >
                 Voici l&#39;état actuel des confirmations pour le service
-                {serviceLabel ? ` ${serviceLabel}` : ''} du {serviceDate}
+                {serviceLabel ? ` ${serviceLabel}` : ''} du {formatDateFr(serviceDate)}
               </Text>
 
               {/* Les chiffres */}

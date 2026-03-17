@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendRecapEmail } from '@/lib/services/recap-email'
-import { z } from 'zod'
-import { isValidEmail } from '@/lib/utils/email'
-
-const emailArray = z.array(z.string().refine(isValidEmail, 'Email invalide')).optional()
-
-const sendSchema = z.object({
-  restaurant_id: z.string().min(1),
-  service_date: z.string().min(1),
-  service: z.enum(['midi', 'soir']).optional(),
-  to: emailArray,
-  cc: emailArray,
-  bcc: emailArray,
-})
+import { render } from '@react-email/render'
+import { RecapEmail } from '@/emails/recap-email'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -26,17 +14,19 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const parsed = sendSchema.safeParse(body)
-  if (!parsed.success) {
+  const { restaurant_id, service_date, service } = body as {
+    restaurant_id: string
+    service_date: string
+    service?: 'midi' | 'soir'
+  }
+
+  if (!restaurant_id || !service_date) {
     return NextResponse.json(
-      { error: 'Données invalides', details: parsed.error.flatten() },
+      { error: 'restaurant_id et service_date sont requis' },
       { status: 400 }
     )
   }
 
-  const { restaurant_id, service_date, service, to, cc, bcc } = parsed.data
-
-  // Get restaurant
   const { data: restaurant, error: restError } = await supabase
     .from('restaurants')
     .select('id, name, email')
@@ -50,7 +40,6 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Get all bookings for this date
   const { data: bookings, error: bookError } = await supabase
     .from('bookings')
     .select('id, guest_name, booking_time, party_size, status, service')
@@ -75,27 +64,18 @@ export async function POST(request: NextRequest) {
     serviceLabel = 'Soir'
   }
 
-  const result = await sendRecapEmail(
-    restaurant,
-    service_date,
-    filteredBookings,
-    {
-      createRecap: async (data) => {
-        const { error } = await supabase.from('recaps').insert(data)
-        if (error) {
-          console.error('Failed to record recap in database:', {
-            restaurant_id: data.restaurant_id,
-            service_date: data.service_date,
-            error: error.message,
-            code: error.code,
-          })
-          // Don't throw - we already sent the email, but log for monitoring
-        }
-      },
-    },
-    serviceLabel,
-    { to, cc, bcc }
+  const html = await render(
+    RecapEmail({
+      restaurantName: restaurant.name,
+      serviceDate: service_date,
+      bookings: filteredBookings,
+      serviceLabel,
+    })
   )
 
-  return NextResponse.json(result)
+  return NextResponse.json({
+    html,
+    bcc: process.env.RECAP_BCC_EMAIL || null,
+    restaurantEmail: restaurant.email,
+  })
 }

@@ -71,7 +71,6 @@ export default function BookingsPage() {
   const activeRestaurant = restaurants.find(r => r.id === activeRestaurantId)
   const restaurantId = activeRestaurantId
   const restaurantName = activeRestaurant?.name ?? ''
-  const restaurantEmail = activeRestaurant?.email ?? ''
 
   // SWR for automatic polling and data fetching
   const swrKey = restaurantId && selectedDate
@@ -399,7 +398,6 @@ export default function BookingsPage() {
               bookings={bookings}
               restaurantId={restaurantId}
               serviceDate={selectedDate}
-              restaurantEmail={restaurantEmail}
             />
           )}
         </>
