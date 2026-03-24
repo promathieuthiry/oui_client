@@ -106,7 +106,9 @@ export async function POST(request: NextRequest) {
         raw_text: text,
         interpretation,
         octopush_message_id: messageId || null,
-        received_at: receptionDate || new Date().toISOString(),
+        received_at: receptionDate
+          ? receptionDate + ' Europe/Paris'
+          : new Date().toISOString(),
       })
 
       if (insertError) throw insertError

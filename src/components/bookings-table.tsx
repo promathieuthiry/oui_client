@@ -396,6 +396,7 @@ export function BookingsTable({
   function formatTimestamp(timestamp: string): string {
     const date = new Date(timestamp)
     return date.toLocaleString('fr-FR', {
+      timeZone: 'Europe/Paris',
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
