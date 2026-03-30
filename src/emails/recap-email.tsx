@@ -15,10 +15,12 @@ import { formatDateFr } from '@/lib/utils/date'
 const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
   sms_sent: 'SMS envoyé',
+  sms_delivered: 'SMS reçu',
   confirmed: 'Confirmée',
   cancelled: 'Annulée',
   to_verify: 'À vérifier',
   send_failed: 'Échec',
+  invalid_number: 'Numéro invalide',
 }
 
 interface RecapBooking {
