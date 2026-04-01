@@ -2,17 +2,29 @@ import Papa from 'papaparse'
 
 const FRENCH_MONTHS: Record<string, string> = {
   janvier: '01',
+  janv: '01',
+  jan: '01',
   février: '02',
+  févr: '02',
+  fév: '02',
   mars: '03',
+  mar: '03',
   avril: '04',
+  avr: '04',
   mai: '05',
   juin: '06',
   juillet: '07',
+  juil: '07',
   août: '08',
   septembre: '09',
+  sept: '09',
+  sep: '09',
   octobre: '10',
+  oct: '10',
   novembre: '11',
+  nov: '11',
   décembre: '12',
+  déc: '12',
 }
 
 export interface ConversionResult {
@@ -36,7 +48,7 @@ function parseFrenchDate(line: string): string | null {
   // Match: day-of-week day month year
   const match = line
     .trim()
-    .match(/^[a-zA-ZÀ-ÿ]+\s+(\d{1,2})\s+([a-zA-ZÀ-ÿ]+)\s+(\d{4})$/)
+    .match(/^[a-zA-ZÀ-ÿ]+\s+(\d{1,2})\s+([a-zA-ZÀ-ÿ]+)\.?\s+(\d{4})$/)
   if (!match) return null
 
   const [, day, monthName, year] = match
