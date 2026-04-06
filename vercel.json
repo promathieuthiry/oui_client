@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/send-recap?service=midi",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/cron/send-recap?service=soir",
+      "schedule": "30 15 * * *"
+    }
+  ]
+}

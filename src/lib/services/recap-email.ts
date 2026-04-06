@@ -34,6 +34,7 @@ interface DBCallbacks {
     email_status: string
     resend_id: string | null
     sent_at: string | null
+    service: string | null
   }) => Promise<void>
 }
 
@@ -56,7 +57,8 @@ export async function sendRecapEmail(
   bookings: RecapBooking[],
   db: DBCallbacks,
   serviceLabel?: string,
-  emailOptions?: EmailOptions
+  emailOptions?: EmailOptions,
+  service?: string | null
 ): Promise<RecapResult> {
   const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -89,6 +91,7 @@ export async function sendRecapEmail(
         email_status: 'failed',
         resend_id: null,
         sent_at: null,
+        service: service ?? null,
       })
 
       return {
@@ -107,6 +110,7 @@ export async function sendRecapEmail(
       email_status: 'sent',
       resend_id: data?.id || null,
       sent_at: now,
+      service: service ?? null,
     })
 
     return {
@@ -122,6 +126,7 @@ export async function sendRecapEmail(
       email_status: 'failed',
       resend_id: null,
       sent_at: null,
+      service: service ?? null,
     })
 
     return {

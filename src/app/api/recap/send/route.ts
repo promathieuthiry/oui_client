@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
       },
     },
     serviceLabel,
-    { to, cc, bcc }
+    { to, cc, bcc },
+    service ?? null
   )
 
   return NextResponse.json(result)
