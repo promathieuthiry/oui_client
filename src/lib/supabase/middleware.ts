@@ -37,7 +37,8 @@ export async function updateSession(request: NextRequest) {
     (error || !data) &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/api/sms/reply') &&
-    !request.nextUrl.pathname.startsWith('/api/webhooks')
+    !request.nextUrl.pathname.startsWith('/api/webhooks') &&
+    !request.nextUrl.pathname.startsWith('/api/cron')
   ) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
