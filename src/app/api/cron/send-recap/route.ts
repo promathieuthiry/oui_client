@@ -31,15 +31,25 @@ export async function GET(request: NextRequest) {
 
   // Get today's date
   const today = new Date().toISOString().split('T')[0]
+  console.log(`[send-recap] service=${service}, today=${today}`)
 
   // Find restaurants with bookings today for this service
-  const { data: restaurantIds } = await supabase
+  const { data: restaurantIds, error: bookingsError } = await supabase
     .from('bookings')
     .select('restaurant_id')
     .eq('booking_date', today)
     .eq('service', service)
 
+  if (bookingsError) {
+    console.error('[send-recap] Failed to query bookings:', bookingsError.message)
+    return NextResponse.json(
+      { error: 'Database error querying bookings', details: bookingsError.message },
+      { status: 500 }
+    )
+  }
+
   if (!restaurantIds || restaurantIds.length === 0) {
+    console.log('[send-recap] No bookings found for today')
     return NextResponse.json({
       service,
       restaurants_processed: 0,
@@ -50,6 +60,7 @@ export async function GET(request: NextRequest) {
 
   // Get unique restaurant IDs
   const uniqueIds = [...new Set(restaurantIds.map((r) => r.restaurant_id))]
+  console.log(`[send-recap] Found ${uniqueIds.length} restaurant(s) with bookings`)
 
   let recapsSent = 0
   let recapsSkipped = 0
@@ -66,21 +77,25 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (existingRecap) {
+      console.log(`[send-recap] Recap already sent for restaurant ${restaurantId}, skipping`)
       recapsSkipped++
       continue
     }
 
     // Get restaurant info
-    const { data: restaurant } = await supabase
+    const { data: restaurant, error: restaurantError } = await supabase
       .from('restaurants')
       .select('id, name, email')
       .eq('id', restaurantId)
       .single()
 
-    if (!restaurant) continue
+    if (restaurantError || !restaurant) {
+      console.error(`[send-recap] Failed to fetch restaurant ${restaurantId}:`, restaurantError?.message)
+      continue
+    }
 
     // Get bookings for today filtered by service
-    const { data: bookings } = await supabase
+    const { data: bookings, error: bookingsDetailError } = await supabase
       .from('bookings')
       .select('id, guest_name, booking_time, party_size, status, service')
       .eq('restaurant_id', restaurantId)
@@ -88,7 +103,14 @@ export async function GET(request: NextRequest) {
       .eq('service', service)
       .order('booking_time', { ascending: true })
 
+    if (bookingsDetailError) {
+      console.error(`[send-recap] Failed to fetch bookings for restaurant ${restaurantId}:`, bookingsDetailError.message)
+      continue
+    }
+
     if (!bookings || bookings.length === 0) continue
+
+    console.log(`[send-recap] Sending recap for ${restaurant.name}: ${bookings.length} booking(s)`)
 
     const result = await sendRecapEmail(
       restaurant,
@@ -96,7 +118,10 @@ export async function GET(request: NextRequest) {
       bookings,
       {
         createRecap: async (data) => {
-          await supabase.from('recaps').insert(data)
+          const { error: insertError } = await supabase.from('recaps').insert(data)
+          if (insertError) {
+            console.error(`[send-recap] Failed to insert recap record:`, insertError.message)
+          }
         },
       },
       serviceLabel,
@@ -105,14 +130,20 @@ export async function GET(request: NextRequest) {
     )
 
     if (result.email_status === 'sent') {
+      console.log(`[send-recap] Email sent for ${restaurant.name} (resend_id: ${result.resend_id})`)
       recapsSent++
+    } else {
+      console.error(`[send-recap] Email failed for ${restaurant.name}: ${result.error}`)
     }
   }
 
-  return NextResponse.json({
+  const response = {
     service,
     restaurants_processed: uniqueIds.length,
     recaps_sent: recapsSent,
     recaps_skipped: recapsSkipped,
-  })
+  }
+  console.log('[send-recap] Done:', JSON.stringify(response))
+
+  return NextResponse.json(response)
 }
