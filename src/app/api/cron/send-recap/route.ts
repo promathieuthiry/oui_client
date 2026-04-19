@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
         },
       },
       serviceLabel,
-      { to: ['promathieuthiry@gmail.com'] },
+      { to: [restaurant.email] },
       service
     )
 

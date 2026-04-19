@@ -4,3 +4,9 @@
 export const SOIR_CUTOFF = '17:00'
 
 export type Service = 'midi' | 'soir'
+
+// Scheduled automatic recap send times (Paris timezone) — mirrors vercel.json crons.
+export const RECAP_SCHEDULE_PARIS: Record<Service, string> = {
+  midi: '10:30',
+  soir: '17:30',
+}

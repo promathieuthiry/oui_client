@@ -84,3 +84,23 @@ export function determineMessageType(
 export function formatDateFr(isoDate: string): string {
   return isoDate.split('-').reverse().join('/')
 }
+
+/**
+ * Format an ISO timestamp to French date+time in Europe/Paris timezone
+ * e.g. "2026-04-19T08:32:15.000Z" -> "19/04/2026 à 10:32"
+ */
+export function formatParisDateTime(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp)
+  const datePart = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
+  const timePart = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+  return `${datePart} à ${timePart}`
+}
