@@ -34,6 +34,12 @@ export default function RootLayout({
                   Réservations
                 </a>
                 <a
+                  href="/stats"
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
+                >
+                  Statistiques
+                </a>
+                <a
                   href="/restaurants"
                   className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium"
                 >
