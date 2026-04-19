@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const receptionDate = body.reception_date as string | undefined
 
   console.log('[SMS Reply] Webhook received:', {
-    phone: phone?.slice(0, 6) + '***',
+    phone,
     textLength: text?.length,
     messageId,
     timestamp: receptionDate || 'now',
@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
   const normalizedPhone = toE164(phone) || phone
 
   console.log('[SMS Reply] Phone normalized:', {
-    original: phone?.slice(0, 6) + '***',
-    normalized: normalizedPhone?.slice(0, 6) + '***',
+    original: phone,
+    normalized: normalizedPhone,
     format: normalizedPhone.startsWith('+') ? 'E.164' : 'other',
   })
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     .gte('booking_date', today)
 
   console.log('[SMS Reply] Debug - All bookings for phone:', {
-    phone: normalizedPhone?.slice(0, 6) + '***',
+    phone: normalizedPhone,
     found: allBookings?.length || 0,
     statuses: allBookings?.map((b) => b.status) || [],
     error: debugError?.message,
@@ -87,14 +87,14 @@ export async function POST(request: NextRequest) {
     .gte('booking_date', today)
 
   console.log('[SMS Reply] Bookings lookup:', {
-    phone: normalizedPhone?.slice(0, 6) + '***',
+    phone: normalizedPhone,
     statusFilter: ['pending', 'sms_sent', 'sms_delivered', 'confirmed'],
     dateFilter: `>= ${today}`,
     found: bookings?.length || 0,
   })
 
   if (!bookings || bookings.length === 0) {
-    console.log(`No matching bookings for phone ${phone.slice(0, 6)}***`)
+    console.log(`No matching bookings for phone ${phone}`)
     return new NextResponse(null, { status: 200 })
   }
 
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
   }
 
   console.log('[SMS Reply] Webhook processed:', {
-    phone: normalizedPhone?.slice(0, 6) + '***',
+    phone: normalizedPhone,
     interpretation,
     bookingsUpdated: bookings?.length || 0,
   })
