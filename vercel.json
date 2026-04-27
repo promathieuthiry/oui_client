@@ -11,6 +11,18 @@
     {
       "path": "/api/cron/send-stats-recap",
       "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/send-sms",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/send-relance?service=midi",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/send-relance?service=soir",
+      "schedule": "0 14 * * *"
     }
   ]
 }

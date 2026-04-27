@@ -15,15 +15,21 @@ export async function GET(request: NextRequest) {
   const supabase = await createServiceClient()
 
   const today = new Date().toISOString().split('T')[0]
+  const service = new URL(request.url).searchParams.get('service')
 
-  // Target today's bookings that got J-1 or Jour J SMS but never replied, and haven't been relanced yet
-  const { data: bookings, error: bookError } = await supabase
+  let query = supabase
     .from('bookings')
     .select('*, restaurants!inner(id, name, sms_template, sms_template_jj, sms_template_relance)')
     .eq('booking_date', today)
     .in('status', ['sms_sent', 'sms_delivered'])
     .or('reminder_sent_at.not.is.null,sms_sent_at.not.is.null')
     .is('relance_sent_at', null)
+
+  if (service === 'midi' || service === 'soir') {
+    query = query.eq('service', service)
+  }
+
+  const { data: bookings, error: bookError } = await query
 
   if (bookError) {
     console.error('Cron send-relance error:', bookError)
