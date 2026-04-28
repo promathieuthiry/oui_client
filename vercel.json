@@ -14,15 +14,15 @@
     },
     {
       "path": "/api/cron/send-sms",
-      "schedule": "0 16 * * *"
+      "schedule": "0 15 * * *"
     },
     {
       "path": "/api/cron/send-relance?service=midi",
-      "schedule": "0 8 * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/send-relance?service=soir",
-      "schedule": "0 14 * * *"
+      "schedule": "0 13 * * *"
     }
   ]
 }
