@@ -205,6 +205,7 @@ export function BookingsTable({
           key={booking.id}
           className={cn(
             'transition-colors duration-150',
+            booking.status === 'pending' && 'bg-amber-50',
             selectedIds.has(booking.id) && 'bg-blue-50',
             hasHistory && 'hover:bg-gray-50 cursor-pointer'
           )}
