@@ -192,7 +192,11 @@ export function BookingsTable({
 
   function renderRows(rows: Booking[]) {
     return rows.flatMap((booking) => {
-      const hasReplies = (booking.reply_count ?? 0) > 0
+      const hasHistory =
+        (booking.reply_count ?? 0) > 0 ||
+        Boolean(booking.sms_sent_at) ||
+        Boolean(booking.reminder_sent_at) ||
+        Boolean(booking.relance_sent_at)
       const isExpanded = expandedId === booking.id
 
       return [
@@ -202,20 +206,20 @@ export function BookingsTable({
           className={cn(
             'transition-colors duration-150',
             selectedIds.has(booking.id) && 'bg-blue-50',
-            hasReplies && 'hover:bg-gray-50 cursor-pointer'
+            hasHistory && 'hover:bg-gray-50 cursor-pointer'
           )}
-          onClick={() => hasReplies && setExpandedId(isExpanded ? null : booking.id)}
+          onClick={() => hasHistory && setExpandedId(isExpanded ? null : booking.id)}
         >
           {/* Expansion column */}
           <td className="pl-4 pr-1 py-4 whitespace-nowrap w-8">
-            {hasReplies && (
+            {hasHistory && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   setExpandedId(isExpanded ? null : booking.id)
                 }}
                 className="p-1 rounded hover:bg-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label={isExpanded ? 'Masquer les réponses SMS' : 'Afficher les réponses SMS'}
+                aria-label={isExpanded ? 'Masquer l\'historique SMS' : 'Afficher l\'historique SMS'}
               >
                 <ChevronRightIcon
                   className={cn(
