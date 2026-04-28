@@ -8,7 +8,7 @@ const updateSchema = z.object({
   booking_time: bookingRowSchema.shape.booking_time.optional(),
   party_size: bookingRowSchema.shape.party_size.optional(),
   status: z
-    .enum(['pending', 'sms_sent', 'sms_delivered', 'confirmed', 'cancelled', 'to_verify', 'send_failed', 'invalid_number'])
+    .enum(['pending', 'sms_sent', 'sms_delivered', 'relance_sent', 'confirmed', 'cancelled', 'to_verify', 'send_failed', 'invalid_number'])
     .optional(),
 })
 

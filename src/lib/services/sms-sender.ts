@@ -156,7 +156,7 @@ export async function sendSMSToBookings(
           relance_sent_at?: string
           status?: string
         } = {
-          status: 'sms_sent'
+          status: smsType === 'relance' ? 'relance_sent' : 'sms_sent'
         }
 
         // Update the correct timestamp field based on SMS type

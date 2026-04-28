@@ -195,7 +195,7 @@ export function aggregate(
   const cancelledCount = bookings.filter((b) => b.status === 'cancelled').length
   const pendingCount = bookings.filter((b) => b.status === 'pending').length
   const noResponseCount = bookings.filter(
-    (b) => b.status === 'sms_sent' || b.status === 'sms_delivered'
+    (b) => b.status === 'sms_sent' || b.status === 'sms_delivered' || b.status === 'relance_sent'
   ).length
   const invalidNumberCount = bookings.filter((b) => b.status === 'invalid_number').length
   const sendFailedCount = bookings.filter((b) => b.status === 'send_failed').length

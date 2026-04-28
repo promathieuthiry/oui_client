@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending: 'En attente',
   sms_sent: 'SMS envoyé',
   sms_delivered: 'SMS reçu',
+  relance_sent: 'Relancé',
   confirmed: 'Confirmée',
   cancelled: 'Annulée',
   to_verify: 'À vérifier',

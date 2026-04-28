@@ -11,6 +11,10 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
     label: 'SMS reçu',
     className: 'bg-indigo-100 text-indigo-700',
   },
+  relance_sent: {
+    label: 'Relancé',
+    className: 'bg-purple-100 text-purple-700',
+  },
   confirmed: {
     label: 'Confirmée',
     className: 'bg-green-100 text-green-700',

@@ -83,12 +83,12 @@ export async function POST(request: NextRequest) {
     .from('bookings')
     .select('id')
     .eq('phone', normalizedPhone)
-    .in('status', ['pending', 'sms_sent', 'sms_delivered', 'confirmed'])
+    .in('status', ['pending', 'sms_sent', 'sms_delivered', 'relance_sent', 'confirmed'])
     .gte('booking_date', today)
 
   console.log('[SMS Reply] Bookings lookup:', {
     phone: normalizedPhone,
-    statusFilter: ['pending', 'sms_sent', 'sms_delivered', 'confirmed'],
+    statusFilter: ['pending', 'sms_sent', 'sms_delivered', 'relance_sent', 'confirmed'],
     dateFilter: `>= ${today}`,
     found: bookings?.length || 0,
   })

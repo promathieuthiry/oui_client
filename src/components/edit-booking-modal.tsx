@@ -30,6 +30,7 @@ const STATUS_OPTIONS = [
   { value: 'pending', label: 'À envoyer' },
   { value: 'sms_sent', label: 'SMS envoyé' },
   { value: 'sms_delivered', label: 'SMS reçu' },
+  { value: 'relance_sent', label: 'Relancé' },
   { value: 'confirmed', label: 'Confirmée' },
   { value: 'cancelled', label: 'Annulée' },
   { value: 'to_verify', label: 'À vérifier' },

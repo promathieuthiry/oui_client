@@ -184,6 +184,7 @@ export default function BookingsPage() {
 
   const sentCount = bookings.filter((b) => b.status === 'sms_sent').length
   const deliveredCount = bookings.filter((b) => b.status === 'sms_delivered').length
+  const relancedCount = bookings.filter((b) => b.status === 'relance_sent').length
   const confirmedCount = bookings.filter((b) => b.status === 'confirmed').length
   const cancelledCount = bookings.filter((b) => b.status === 'cancelled').length
   const toVerifyCount = bookings.filter((b) => b.status === 'to_verify').length
@@ -274,6 +275,7 @@ export default function BookingsPage() {
           <StatCard label="À envoyer" value={pendingBookings.length} color="text-gray-600" />
           <StatCard label="SMS envoyés" value={sentCount} color="text-blue-600" />
           <StatCard label="SMS reçus" value={deliveredCount} color="text-indigo-600" />
+          <StatCard label="Relancés" value={relancedCount} color="text-purple-600" />
           <StatCard label="Confirmées" value={confirmedCount} color="text-green-600" />
           <StatCard label="Annulées" value={cancelledCount} color="text-red-600" />
           <StatCard label="À vérifier" value={toVerifyCount} color="text-yellow-600" />
