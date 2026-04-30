@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/send-recap?service=midi",
-      "schedule": "0 9 * * *"
+      "schedule": "30 9 * * *"
     },
     {
       "path": "/api/cron/send-recap?service=soir",
